@@ -137,7 +137,8 @@ CONFIG_LAYER2_ROAMING = y
 #bit0: ROAM_ON_EXPIRED, #bit1: ROAM_ON_RESUME, #bit2: ROAM_ACTIVE
 CONFIG_ROAMING_FLAG = 0x3
 ###################### Platform Related #######################
-CONFIG_PLATFORM_I386_PC = y
+CONFIG_PLATFORM_I386_PC = n
+CONFIG_PLATFORM_ARM_RPI = y
 CONFIG_PLATFORM_ANDROID_X86 = n
 CONFIG_PLATFORM_ANDROID_INTEL_X86 = n
 CONFIG_PLATFORM_JB_X86 = n
@@ -1441,6 +1442,17 @@ ARCH := arm64
 CROSS_COMPILE := /home/android_sdk/Allwinner/a64/android-51/lichee/out/sun50iw1p1/android/common/buildroot/external-toolchain/bin/aarch64-linux-gnu-
 KSRC :=/home/android_sdk/Allwinner/a64/android-51/lichee/linux-3.10/
 endif
+
+ifeq ($(CONFIG_PLATFORM_ARM_RPI), y)
+EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
+ARCH ?= arm
+CROSS_COMPILE ?=
+KVER ?= $(shell uname -r)
+KSRC := /lib/modules/$(KVER)/build
+MODDESTDIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/
+INSTALL_PREFIX :=
+endif
+
 
 ifeq ($(CONFIG_PLATFORM_TI_AM3517), y)
 EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN -DCONFIG_PLATFORM_ANDROID -DCONFIG_PLATFORM_SHUTTLE
