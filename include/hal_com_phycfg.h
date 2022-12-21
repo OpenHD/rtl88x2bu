@@ -16,7 +16,7 @@
 #define __HAL_COM_PHYCFG_H__
 
 #ifndef DBG_TX_POWER_IDX
-#define DBG_TX_POWER_IDX 1
+#define DBG_TX_POWER_IDX 0
 #endif
 
 #define		PathA                     			0x0	/* Useless */
