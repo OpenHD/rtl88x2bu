@@ -1,9 +1,10 @@
 EXTRA_CFLAGS += $(USER_EXTRA_CFLAGS)
 EXTRA_CFLAGS += -O2
 #EXTRA_CFLAGS += -O3
-#EXTRA_CFLAGS += -Wall
-#EXTRA_CFLAGS += -Wextra
-#EXTRA_CFLAGS += -Werror
+EXTRA_CFLAGS += -Wall -Wno-error
+EXTRA_CFLAGS += -Wextra
+EXTRA_CFLAGS += -Wno-address
+EXTRA_CFLAGS += -Wno-stringop-overread
 #EXTRA_CFLAGS += -pedantic
 #EXTRA_CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes
 #EXTRA_CFLAGS += -Wimplicit-fallthrough=1
