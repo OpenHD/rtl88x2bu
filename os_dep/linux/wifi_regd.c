@@ -14,7 +14,7 @@
  *****************************************************************************/
 
 #include <drv_types.h>
-#define REGULATORY_IGNORE_STALE_KICKOFF
+
 #ifdef CONFIG_IOCTL_CFG80211
 static void rtw_regd_overide_flags(struct wiphy *wiphy, struct rf_ctl_t *rfctl)
 {
@@ -405,7 +405,9 @@ int rtw_regd_init(struct wiphy *wiphy)
 	wiphy->regulatory_flags &= ~REGULATORY_DISABLE_BEACON_HINTS;
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
+	return 0;	
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
 	wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
 #endif
 
