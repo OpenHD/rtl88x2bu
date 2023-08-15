@@ -4624,6 +4624,14 @@ static int cfg80211_rtw_set_txpower(struct wiphy *wiphy,
 	default:
 		RTW_WARN(FUNC_WIPHY_FMT" unknown type:%d\n", FUNC_WIPHY_ARG(wiphy), type);
 	}
+    // 30dBm == 1W
+    // Fixed
+    // Hard-coded - if the chip cannot do 1W (I don't know any so far that can do that) the driver seems to just
+    // set whatever highest is possible
+    wiphy_data->txpwr_total_lmt_mbm = UNSPECIFIED_MBM;
+    wiphy_data->txpwr_total_target_mbm= 30*1000;
+    RTW_WARN(FUNC_WIPHY_FMT" OpenHD cf80211 tx power %s txpwr_total_lmt_mbm:%d txpwr_total_target_mbm%d \n", FUNC_WIPHY_ARG(wiphy)
+		, nl80211_tx_power_setting_str(type), wiphy_data->txpwr_total_lmt_mbm,wiphy_data->txpwr_total_target_mbm);
 
 	if (ret == 0)
 		rtw_run_in_thread_cmd_wait(adapter, ((void *)(rtw_hal_update_txpwr_level)), adapter, 2000);
