@@ -6219,7 +6219,6 @@ static int	cfg80211_rtw_set_channel(struct wiphy *wiphy
 	int chan_target = (u8) ieee80211_frequency_to_channel(chan->center_freq);
 	int chan_offset = HAL_PRIME_CHNL_OFFSET_DONT_CARE;
 	int chan_width = CHANNEL_WIDTH_20;
-    int openhd_override_channel=0;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	RTW_INFO(FUNC_NDEV_FMT"\n", FUNC_NDEV_ARG(ndev));
@@ -6244,18 +6243,9 @@ static int	cfg80211_rtw_set_channel(struct wiphy *wiphy
 		chan_offset = HAL_PRIME_CHNL_OFFSET_DONT_CARE;
 		break;
 	}
-    openhd_override_channel=get_openhd_override_channel();
-    if(openhd_override_channel){
-        chan_target=padapter->registrypriv.openhd_override_channel;
-        RTW_WARN("OpenHD: using openhd_override_channel");
-    }
 
 	RTW_INFO(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d\n"
 		, FUNC_ADPT_ARG(padapter), chan_target, chan_width, chan_offset);
-    if(true){
-	  RTW_WARN(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d OpenHD channel debug\n"
-		, FUNC_ADPT_ARG(padapter), chan_target, chan_width, chan_offset);
-	}
 
 	rtw_set_chbw_cmd(padapter, chan_target, chan_width, chan_offset, RTW_CMDF_WAIT_ACK);
 
@@ -6904,6 +6894,7 @@ static int cfg80211_rtw_set_monitor_channel(struct wiphy *wiphy
 {
 	_adapter *padapter = wiphy_to_adapter(wiphy);
 	u8 target_channal, target_offset, target_width, ht_option;
+    int openhd_override_channel=0;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #ifdef CONFIG_DEBUG_CFG80211
@@ -6928,9 +6919,20 @@ static int cfg80211_rtw_set_monitor_channel(struct wiphy *wiphy
 	rtw_get_chbw_from_nl80211_channel_type(chan, channel_type,
 		&ht_option, &target_channal, &target_width, &target_offset);
 #endif
+    openhd_override_channel=get_openhd_override_channel();
+    if(openhd_override_channel){
+        target_channal=openhd_override_channel;
+        RTW_WARN("OpenHD: using openhd_override_channel");
+    }
+
 	RTW_INFO(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d\n",
 		FUNC_ADPT_ARG(padapter), target_channal,
 		target_width, target_offset);
+    if(true){
+	    RTW_WARN(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d OpenHD channel debug\n",
+		FUNC_ADPT_ARG(padapter), target_channal,
+        target_width, target_offset);
+	}
 
 	rtw_set_chbw_cmd(padapter, target_channal, target_width,
 		target_offset, RTW_CMDF_WAIT_ACK);
