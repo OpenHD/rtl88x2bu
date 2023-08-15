@@ -6929,9 +6929,9 @@ static int cfg80211_rtw_set_monitor_channel(struct wiphy *wiphy
 		FUNC_ADPT_ARG(padapter), target_channal,
 		target_width, target_offset);
     if(true){
-	    RTW_WARN(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d OpenHD channel debug\n",
+	    RTW_WARN(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d OpenHD channel debug override:%d\n",
 		FUNC_ADPT_ARG(padapter), target_channal,
-        target_width, target_offset);
+        target_width, target_offset,openhd_override_channel);
 	}
 
 	rtw_set_chbw_cmd(padapter, target_channal, target_width,
