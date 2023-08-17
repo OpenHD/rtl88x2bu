@@ -49,6 +49,8 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz, u8 bag
 	u8	DriverFixedRate = 0x0;
 	u8 hw_port = rtw_hal_get_port(padapter);
 
+    //RTW_WARN("OpenHD update_txdesc rtl8822bu\n");
+
 #ifndef CONFIG_USE_USB_BUFFER_ALLOC_TX
 	if (padapter->registrypriv.mp_mode == 0) {
 		if ((PACKET_OFFSET_SZ != 0) && (!bagg_pkt)
@@ -246,6 +248,9 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz, u8 bag
 #endif
 	} else if ((pxmitframe->frame_tag & 0x0f) == MGNT_FRAMETAG) {
 		/* RTW_INFO("pxmitframe->frame_tag == MGNT_FRAMETAG\n");	*/
+        //RTW_WARN("OpenHD pxmitframe->frame_tag & 0x0f) == MGNT_FRAMETAG\n");
+        // OpenHD: These are monitor mode frames
+
 		SET_TX_DESC_MBSSID_8822B(ptxdesc, pattrib->mbssid & 0xF);
 
 		SET_TX_DESC_USE_RATE_8822B(ptxdesc, 1);
@@ -258,6 +263,20 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz, u8 bag
 			SET_TX_DESC_RTS_DATA_RTY_LMT_8822B(ptxdesc, 6);
 		else
 			SET_TX_DESC_RTS_DATA_RTY_LMT_8822B(ptxdesc, 12);
+
+        if(pattrib->monitor_mode_frame==_TRUE){
+            //RTW_WARN("OpenHD Is monitor frame ldpc:%d stbc:%d bw:%d\n",(int)pattrib->stbc,(int)pattrib->ldpc,(int)pattrib->bwmode);
+            if (pattrib->ldpc)
+                SET_TX_DESC_DATA_LDPC_8822B(ptxdesc, 1);
+            if (pattrib->stbc)
+                SET_TX_DESC_DATA_STBC_8822B(ptxdesc, 1);
+            SET_TX_DESC_DATA_BW_8822B(ptxdesc, pattrib->bwmode);
+            if(pattrib->sgi == _TRUE) {
+                SET_TX_DESC_DATA_SHORT_8822B(ptxdesc, 1);
+            } else {
+                SET_TX_DESC_DATA_SHORT_8822B(ptxdesc, 0);
+            }
+        }
 
 		/* VHT NDPA or HT NDPA Packet for Beamformer. */
 		rtl8822b_fill_txdesc_mgnt_bf(pxmitframe, ptxdesc);
