@@ -21,6 +21,7 @@ static u8 P802_1H_OUI[P80211_OUI_LEN] = { 0x00, 0x00, 0xf8 };
 static u8 RFC1042_OUI[P80211_OUI_LEN] = { 0x00, 0x00, 0x00 };
 
 int openhd_tx_error_count=0;
+int openhd_tx_packets_cunt=0;
 
 static void _init_txservq(struct tx_servq *ptxservq)
 {
@@ -4875,17 +4876,31 @@ static struct xmit_frame* rtl8812au_monitor_alloc_mgtxmitframe(struct xmit_priv 
 	int tries;
 	int delay = 300;
 	struct xmit_frame *pmgntframe = NULL;
+    int n_needed_tries=0;
+    //RTW_WARN("OpenHD rtl8812au_monitor_alloc_mgtxmitframe begin %d\n",openhd_tx_packets_cunt);
 
     // OpenHD: Here a method that returns a frame if place is in the queue
     // Is called 4 times with a (increasing) sleep until there is space in the queue
     // If no space is in the queue after 4 calls, NULL is returned
-	for(tries = 3; tries >= 0; tries--) {
+	for(tries = 30; tries >= 0; tries--) {
 		pmgntframe = alloc_mgtxmitframe(pxmitpriv);
-		if(pmgntframe != NULL)
-			return pmgntframe;
-		rtw_udelay_os(delay);
+        n_needed_tries++;
+		if(pmgntframe != NULL){
+            //RTW_WARN("OpenHD rtl8812au_monitor_alloc_mgtxmitframe success %d tries:%d\n",openhd_tx_packets_cunt,n_needed_tries);
+            return pmgntframe;
+        }
+        //RTW_WARN("OpenHD rtl8812au_monitor_alloc_mgtxmitframe %d didn't get %d\n",openhd_tx_packets_cunt,tries);
+        /*if(tries==1){
+            // last try, sleep long, then try again
+            RTW_WARN("Performing long sleep\n");
+            usleep_range(3*1000,3*1000);
+        }else{
+            rtw_udelay_os(delay);
+        }*/
+        rtw_udelay_os(delay);
 		delay += delay/2;
 	}
+    //RTW_WARN("OpenHD rtl8812au_monitor_alloc_mgtxmitframe fail %d tries:%d\n",openhd_tx_packets_cunt,n_needed_tries);
 	return NULL;
 }
 s32 rtl8812au_rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *ndev)
@@ -4916,6 +4931,8 @@ s32 rtl8812au_rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *nde
 	u32 len = skb->len;
 	u8 category, action;
 	int type = -1;
+    openhd_tx_packets_cunt++;
+    //RTW_WARN("OpenHD rtl8812au_rtw_monitor_xmit_entry %d\n",openhd_tx_packets_cunt);
 
 	if (skb)
 		rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, skb->truesize);
@@ -4931,13 +4948,16 @@ s32 rtl8812au_rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *nde
 	if (unlikely(skb->len < rtap_len))
 		goto fail;
 
+    //RTW_WARN("OpenHD rtl8812au_rtw_monitor_xmit_entry hmX %d\n",openhd_tx_packets_cunt);
     //RTW_WARN("OpenHD: calling monitor_alloc_mgtxmitframe X");
 	if ((pmgntframe = rtl8812au_monitor_alloc_mgtxmitframe(pxmitpriv)) == NULL) {
 		DBG_COUNTER(padapter->tx_logs.core_tx_err_pxmitframe);
         openhd_tx_error_count++;
         RTW_WARN("OpenHD: monitor_alloc_mgtxmitframe - tx busy %d",openhd_tx_error_count);
-		return NETDEV_TX_BUSY;
+        goto fail;
+		//return NETDEV_TX_BUSY;
 	}
+    //RTW_WARN("OpenHD rtl8812au_rtw_monitor_xmit_entry hmY %d\n",openhd_tx_packets_cunt);
 
 	//ret = rtw_ieee80211_radiotap_iterator_init(&iterator, rtap_hdr, skb->len, NULL);
     ret = ieee80211_radiotap_iterator_init(&iterator, rtap_hdr, skb->len, NULL);
@@ -5059,6 +5079,7 @@ fail:
 	return NETDEV_TX_OK;
 }
 
+// OpenHD: ioctl_cfg80211 rtw_cfg80211_monitor_if_xmit_entry goes - over some hoops - all the way to here
 s32 rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *ndev)
 {
     return rtl8812au_rtw_monitor_xmit_entry(skb,ndev);
