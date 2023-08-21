@@ -692,7 +692,7 @@ void rtl8822b_set_tx_power_index(PADAPTER adapter, u32 powerindex, enum rf_path 
 	u8 shift = 0;
 	boolean write_ret;
     // OpenHD: final tx power index set method
-    RTW_WARN("OpenHD rtl8822b_set_tx_power_index %s %d\n", MGN_RATE_STR(rate), powerindex);
+    //RTW_WARN("OpenHD rtl8822b_set_tx_power_index %s %d\n", MGN_RATE_STR(rate), powerindex);
 
 	if (!IS_1T_RATE(rate) && !IS_2T_RATE(rate)) {
 		RTW_ERR(FUNC_ADPT_FMT" invalid rate(%s)\n", FUNC_ADPT_ARG(adapter), MGN_RATE_STR(rate));
