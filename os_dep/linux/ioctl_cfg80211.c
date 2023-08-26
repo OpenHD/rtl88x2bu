@@ -454,7 +454,9 @@ u8 rtw_cfg80211_ch_switch_notify(_adapter *adapter, u8 ch, u8 bw, u8 offset,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
 	if (started) {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
+	cfg80211_ch_switch_notify(adapter->pnetdev, &chdef, 0, 0);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
 		cfg80211_ch_switch_started_notify(adapter->pnetdev, &chdef, 0, 0, false);
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
 
@@ -477,7 +479,9 @@ u8 rtw_cfg80211_ch_switch_notify(_adapter *adapter, u8 ch, u8 bw, u8 offset,
 	if (!rtw_cfg80211_allow_ch_switch_notify(adapter))
 		goto exit;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 2))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
+	cfg80211_ch_switch_notify(adapter->pnetdev, &chdef, 0, 0);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 2))
 	cfg80211_ch_switch_notify(adapter->pnetdev, &chdef, 0);
 #else
 	cfg80211_ch_switch_notify(adapter->pnetdev, &chdef);
@@ -4582,6 +4586,7 @@ static int cfg80211_rtw_set_txpower(struct wiphy *wiphy,
 	struct rtw_wiphy_data *wiphy_data = rtw_wiphy_priv(wiphy);
 	_adapter *adapter = wiphy_to_adapter(wiphy);
 	int ret = -EOPNOTSUPP;
+    int openhd_override_tx_power_mbm=0;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 	if (wdev) {
@@ -4620,6 +4625,17 @@ static int cfg80211_rtw_set_txpower(struct wiphy *wiphy,
 	default:
 		RTW_WARN(FUNC_WIPHY_FMT" unknown type:%d\n", FUNC_WIPHY_ARG(wiphy), type);
 	}
+    // OpenHD
+    openhd_override_tx_power_mbm=get_openhd_override_tx_power_mbm();
+    if(openhd_override_tx_power_mbm){
+        wiphy_data->txpwr_total_lmt_mbm = UNSPECIFIED_MBM;
+        wiphy_data->txpwr_total_target_mbm= openhd_override_tx_power_mbm;
+        // If the chip cannot do the requested tx power, the driver just seems to set tx power index 63"
+        RTW_WARN("Using openhd_override_tx_power_mbm %d",openhd_override_tx_power_mbm);
+    }
+    RTW_WARN(FUNC_WIPHY_FMT" OpenHD cf80211 tx power %s txpwr_total_lmt_mbm:%d txpwr_total_target_mbm%d openhd_override_tx_power_mbm:%d\n", FUNC_WIPHY_ARG(wiphy)
+		, nl80211_tx_power_setting_str(type), wiphy_data->txpwr_total_lmt_mbm,wiphy_data->txpwr_total_target_mbm,
+        openhd_override_tx_power_mbm);
 
 	if (ret == 0)
 		rtw_run_in_thread_cmd_wait(adapter, ((void *)(rtw_hal_update_txpwr_level)), adapter, 2000);
@@ -6882,6 +6898,7 @@ static int cfg80211_rtw_set_monitor_channel(struct wiphy *wiphy
 {
 	_adapter *padapter = wiphy_to_adapter(wiphy);
 	u8 target_channal, target_offset, target_width, ht_option;
+    int openhd_override_channel=0;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #ifdef CONFIG_DEBUG_CFG80211
@@ -6906,9 +6923,20 @@ static int cfg80211_rtw_set_monitor_channel(struct wiphy *wiphy
 	rtw_get_chbw_from_nl80211_channel_type(chan, channel_type,
 		&ht_option, &target_channal, &target_width, &target_offset);
 #endif
+    openhd_override_channel=get_openhd_override_channel();
+    if(openhd_override_channel){
+        target_channal=openhd_override_channel;
+        RTW_WARN("OpenHD: using openhd_override_channel");
+    }
+
 	RTW_INFO(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d\n",
 		FUNC_ADPT_ARG(padapter), target_channal,
 		target_width, target_offset);
+    if(true){
+	    RTW_WARN(FUNC_ADPT_FMT" ch:%d bw:%d, offset:%d OpenHD channel debug override:%d\n",
+		FUNC_ADPT_ARG(padapter), target_channal,
+        target_width, target_offset,openhd_override_channel);
+	}
 
 	rtw_set_chbw_cmd(padapter, target_channal, target_width,
 		target_offset, RTW_CMDF_WAIT_ACK);

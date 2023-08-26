@@ -91,7 +91,9 @@
 #ifdef CONFIG_SINGLE_XMIT_BUF
 	#define NR_XMIT_EXTBUFF	(1)
 #else
-	#define NR_XMIT_EXTBUFF	(32)
+	//#define NR_XMIT_EXTBUFF	(32)
+    // OpenHD: changed to same value like rtl812au
+    #define NR_XMIT_EXTBUFF	(64)
 #endif
 
 #ifdef CONFIG_RTL8812A
@@ -444,6 +446,7 @@ struct pkt_attrib {
 	u8   mbssid;
 	u8	ldpc;
 	u8	stbc;
+    u8 monitor_mode_frame;
 #ifdef CONFIG_WMMPS_STA
 	u8	trigger_frame;
 #endif /* CONFIG_WMMPS_STA */
