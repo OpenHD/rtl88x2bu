@@ -7,7 +7,7 @@ EXTRA_CFLAGS += -Wno-address
 #EXTRA_CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes
 #EXTRA_CFLAGS += -Wimplicit-fallthrough=1
 
-#EXTRA_CFLAGS += -Wno-unused-variable
+EXTRA_CFLAGS += -Wno-unused-variable
 #EXTRA_CFLAGS += -Wno-unused-value
 #EXTRA_CFLAGS += -Wno-unused-label
 #EXTRA_CFLAGS += -Wno-unused-parameter
