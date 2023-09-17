@@ -1835,6 +1835,7 @@ config_phydm_switch_channel_8822b(struct dm_struct *dm,
 		config_phydm_switch_bandwidth_8822b(dm, 0, CHANNEL_WIDTH_20);
 #endif
 	central_ch_8822b = central_ch;
+    //RTW_WARN("OpenHD config_phydm_switch_channel_8822b central_ch_8822b:%d",(int)central_ch_8822b);
 
 	/* @Errir handling for wrong HW setting due to wrong channel setting */
 	if (central_ch_8822b <= 14)
@@ -1918,6 +1919,7 @@ config_phydm_switch_channel_8822b(struct dm_struct *dm,
 			odm_set_bb_reg(dm, R_0x860, 0x1ffe0000, 0x412);
 		} else {
 			PHYDM_DBG(dm, ODM_PHY_CONFIG, "(fc_area)Fail\n");
+            RTW_WARN("(fc_area)Fail");
 			return false;
 		}
 
@@ -1949,6 +1951,7 @@ config_phydm_switch_channel_8822b(struct dm_struct *dm,
 			       BIT(15)), rf_reg_be);
 	} else {
 		PHYDM_DBG(dm, ODM_PHY_CONFIG, "(phase noise)Fail\n");
+        RTW_WARN("(phase noise)Fail");
 		return false;
 	}
 
@@ -1976,6 +1979,7 @@ config_phydm_switch_channel_8822b(struct dm_struct *dm,
 
 	if (!rf_reg_status) {
 		PHYDM_DBG(dm, ODM_PHY_CONFIG, "Fail, write RF_reg fail\n");
+        RTW_WARN("Fail, write RF_reg fail");
 		return false;
 	}
 
