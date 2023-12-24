@@ -11,7 +11,7 @@ sudo rmmod rtw88_8822bu
 
 # and install the good one
 # NOTE Here I remove then re-install the driver, since during development, I also use this script
-sudo rmmod 88x2bu.ko
-sudo insmod 88x2bu.ko
+sudo rmmod 88x2bu_ohd.ko
+sudo insmod 88x2bu_ohd.ko
 
-echo "88x2bu driver installed"
+echo "88x2bu_ohd driver installed"
