@@ -2476,6 +2476,7 @@ export CONFIG_RTL8822BU = m
 all: modules
 
 modules:
+	    @echo '#define DRIVERVERSION "v5.13.1_ohd_$(shell git rev-parse --short HEAD)"' > $(VERSION_HEADER)
 	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KSRC) M=$(shell pwd)  modules
 
 strip:
@@ -2531,6 +2532,7 @@ config_r:
 .PHONY: modules clean
 
 clean:
+	@echo '#define DRIVERVERSION "v5.13.1_ohd_THIS_IS_DIRTY"' > $(VERSION_HEADER)
 	#$(MAKE) -C $(KSRC) M=$(shell pwd) clean
 	cd hal ; rm -fr */*/*/*.mod.c */*/*/*.mod */*/*/*.o */*/*/.*.cmd */*/*/*.ko
 	cd hal ; rm -fr */*/*.mod.c */*/*.mod */*/*.o */*/.*.cmd */*/*.ko
