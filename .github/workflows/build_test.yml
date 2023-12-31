@@ -26,7 +26,8 @@ jobs:
         sudo mkdir -p /lib/modules/6.2.0-1018-azure/kernel/drivers/net/wireless/
         sudo apt update 
         sudo apt install -y build-essential tree
-        chmod +x install-driver.sh
-        sudo ./install-driver.sh
-        # make
+        # chmod +x install-driver.sh
+        # sudo ./install-driver.sh
+        make
+        make install
         ls
