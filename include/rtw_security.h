@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -44,6 +44,7 @@ enum security_type {
 #endif
 };
 
+
 /* 802.11W use wrong key */
 #define IEEE80211W_RIGHT_KEY	0x0
 #define IEEE80211W_WRONG_KEY	0x1
@@ -66,6 +67,10 @@ u32 security_type_bip_to_gmcs(enum security_type type);
 #define RTW_KCK_LEN 16
 #define RTW_TKIP_MIC_LEN 8
 #define RTW_REPLAY_CTR_LEN 8
+/* For CCMP-128 only */
+#define RTW_PTK_LEN 16
+/* For BIP-CMAC-128 only */
+#define RTW_IGTK_LEN 16
 
 #define INVALID_SEC_MAC_CAM_ID	0xFF
 
@@ -73,7 +78,7 @@ typedef enum {
 	ENCRYP_PROTOCOL_OPENSYS,   /* open system */
 	ENCRYP_PROTOCOL_WEP,       /* WEP */
 	ENCRYP_PROTOCOL_WPA,       /* WPA */
-	ENCRYP_PROTOCOL_WPA2,      /* WPA2 */
+	ENCRYP_PROTOCOL_RSN,       /* RSN(WPA2/WPA3) */
 	ENCRYP_PROTOCOL_WAPI,      /* WAPI: Not support in this version */
 	ENCRYP_PROTOCOL_MAX
 } ENCRYP_PROTOCOL_E;
@@ -134,6 +139,25 @@ typedef struct _RT_PMKID_LIST {
 	u16						ssid_length;
 } RT_PMKID_LIST, *PRT_PMKID_LIST;
 
+struct link_security_priv {
+	u32	dot118021XGrpKeyid;		/* key id used for Grp Key ( tx key index) */
+	union Keytype	dot118021XGrpKey[6];	/* 802.1x Group Key, for inx0 and inx1	 */
+	union Keytype	dot118021XGrptxmickey[6];
+	union Keytype	dot118021XGrprxmickey[6];
+	union pn48		dot11Grptxpn;			/* PN48 used for Grp Key xmit. */
+	union pn48		dot11Grprxpn;			/* PN48 used for Grp Key recv. */
+	u8				iv_seq[4][8];
+#ifdef CONFIG_IEEE80211W
+	u32	dot11wBIPKeyid;						/* key id used for BIP Key ( tx key index) */
+	union Keytype	dot11wBIPKey[6];		/* BIP Key, for index4 and index5 */
+	union pn48		dot11wBIPtxpn;			/* PN48 used for BIP xmit. */
+	union pn48		dot11wBIPrxpn;			/* PN48 used for BIP recv. */
+	u8	binstallBIPkey;
+#endif /* CONFIG_IEEE80211W */
+	u8	binstallGrpkey;
+	u8	bcheck_grpkey;
+	u8	bgrpkey_handshake;
+};
 
 struct security_priv {
 	u32	  dot11AuthAlgrthm;		/* 802.11 auth, could be open, shared, 8021x and authswitch */
@@ -147,20 +171,9 @@ struct security_priv {
 	u8 	key_mask; /* use to restore wep key after hal_init */
 
 	u32 dot118021XGrpPrivacy;	/* This specify the privacy algthm. used for Grp key */
-	u32	dot118021XGrpKeyid;		/* key id used for Grp Key ( tx key index) */
-	union Keytype	dot118021XGrpKey[6];	/* 802.1x Group Key, for inx0 and inx1	 */
-	union Keytype	dot118021XGrptxmickey[6];
-	union Keytype	dot118021XGrprxmickey[6];
-	union pn48		dot11Grptxpn;			/* PN48 used for Grp Key xmit. */
-	union pn48		dot11Grprxpn;			/* PN48 used for Grp Key recv. */
-	u8				iv_seq[4][8];
 #ifdef CONFIG_IEEE80211W
 	enum security_type dot11wCipher;
-	u32	dot11wBIPKeyid;						/* key id used for BIP Key ( tx key index) */
-	union Keytype	dot11wBIPKey[6];		/* BIP Key, for index4 and index5 */
-	union pn48		dot11wBIPtxpn;			/* PN48 used for BIP xmit. */
-	union pn48		dot11wBIPrxpn;			/* PN48 used for BIP recv. */
-#endif /* CONFIG_IEEE80211W */
+#endif
 #ifdef CONFIG_AP_MODE
 	/* extend security capabilities for AP_MODE */
 	unsigned int dot8021xalg;/* 0:disable, 1:psk, 2:802.1x */
@@ -170,9 +183,11 @@ struct security_priv {
 	unsigned int wpa_pairwise_cipher;
 	unsigned int wpa2_pairwise_cipher;
 	unsigned int akmp; /* An authentication and key management protocol */
-#endif
 	u8 mfp_opt;
+#endif
+#ifdef CONFIG_CONCURRENT_MODE
 	u8	dot118021x_bmc_cam_id;
+#endif
 	/*IEEE802.11-2012 Std. Table 8-101 AKM Suite Selectors*/
 	u32	rsn_akm_suite_type;
 
@@ -182,16 +197,13 @@ struct security_priv {
 	u8 owe_ie[MAX_OWE_IE_LEN];/* added in assoc req */
 	int owe_ie_len;
 
-	u8	binstallGrpkey;
+	u8 rsnx_ie[MAX_RSNX_IE_LEN];
+	int rsnx_ie_len;
+
 #ifdef CONFIG_GTK_OL
 	u8	binstallKCK_KEK;
 #endif /* CONFIG_GTK_OL */
-#ifdef CONFIG_IEEE80211W
-	u8	binstallBIPkey;
-#endif /* CONFIG_IEEE80211W */
 	u8	busetkipkey;
-	u8	bcheck_grpkey;
-	u8	bgrpkey_handshake;
 
 	u8	auth_alg;
 	u8	auth_type;
@@ -201,7 +213,7 @@ struct security_priv {
 	s32	sw_encrypt;/* from registry_priv */
 	s32	sw_decrypt;/* from registry_priv */
 
-	s32 	hw_decrypted;/* if the rx packets is hw_decrypted==_FALSE, it means the hw has not been ready. */
+	s32 hw_decrypted; /* Broadcast HW security is ready or not */
 
 
 	/* keeps the auth_type & enc_status from upper layer ioctl(wpa_supplicant or wzc) */
@@ -210,10 +222,6 @@ struct security_priv {
 
 	NDIS_802_11_WEP ndiswep;
 
-	u8 assoc_info[600];
-	u8 szofcapability[256]; /* for wpa2 usage */
-	u8 oidassociation[512]; /* for wpa/wpa2 usage */
-	u8 authenticator_ie[256];  /* store ap security information element */
 	u8 supplicant_ie[256];  /* store sta security information element */
 
 
@@ -377,6 +385,10 @@ void rtw_wep_decrypt(_adapter *padapter, u8  *precvframe);
 u32 rtw_gcmp_encrypt(_adapter *padapter, u8 *pxmitframe);
 u32 rtw_gcmp_decrypt(_adapter *padapter, u8 *precvframe);
 
+#if 0 //RTW_PHL_TX: mark un-finished codes for reading
+u32 rtw_core_aes_encrypt(_adapter *padapter, u8 *pxframe);
+#endif
+
 #ifdef CONFIG_RTW_MESH_AEK
 int rtw_aes_siv_encrypt(const u8 *key, size_t key_len,
 	const u8 *pw, size_t pwlen, size_t num_elem,
@@ -390,7 +402,8 @@ int rtw_aes_siv_decrypt(const u8 *key, size_t key_len,
 u8 rtw_calculate_bip_mic(enum security_type gmcs, u8 *whdr_pos, s32 len,
 	const u8 *key, const u8 *data, size_t data_len, u8 *mic);
 u32 rtw_bip_verify(enum security_type gmcs, u16 pkt_len,
-	u8 *whdr_pos, sint flen, const u8 *key, u16 keyid, u64 *ipn);
+	u8 *whdr_pos, sint flen, const u8 *key, u16 keyid, u64 *ipn,
+	u8 *precvframe);
 #endif
 #ifdef CONFIG_TDLS
 void wpa_tdls_generate_tpk(_adapter *padapter, void *sta);
@@ -416,6 +429,12 @@ u16 rtw_calc_crc(u8  *pdata, int length);
 #define rtw_sec_chk_auth_type(a, s) \
 	((a)->securitypriv.auth_type == (s))
 
+#define IV_FMT "0x%02x%02x%02x%02x%02x%02x%02x%02x"
+#define IV_ARG(iv) iv[7], iv[6], iv[5], iv[4], iv[3], iv[2], iv[1], iv[0]
+#define PN_FMT "0x%02x%02x%02x%02x%02x%02x"
+#define PN_ARG(pn) pn[5], pn[4], pn[3], pn[2], pn[1], pn[0]
+u8 rtw_iv_to_pn(u8 *iv, u8 *pn, u8 *key_id, u32 enc_algo);
+u8 rtw_pn_to_iv(u8 *pn, u8 *iv, u8 key_id, u32 enc_algo);
 #endif /* __RTL871X_SECURITY_H_ */
 
 u32 rtw_calc_crc32(u8 *data, size_t len);

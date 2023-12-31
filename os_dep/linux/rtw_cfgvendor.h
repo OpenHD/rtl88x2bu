@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -591,14 +591,6 @@ typedef struct {
    u32 aggressive_statistics_gathering; // set for field debug mode. Driver should collect all statistics regardless of performance impact.
 } wifi_link_layer_params;
 
-#define RSSI_MONITOR_EVT_VERSION   1
-typedef struct {
-    u8 version;
-    s8 cur_rssi;
-    mac_addr BSSID;
-} rssi_monitor_evt;
-
-
 /* wifi statistics bitmap  */
 #define WIFI_STATS_RADIO              0x00000001      // all radio statistics
 #define WIFI_STATS_RADIO_CCA          0x00000002      // cca_busy_time (within radio statistics)
@@ -611,6 +603,12 @@ typedef struct {
 
 #endif /* CONFIG_RTW_CFGVENDOR_LLSTATS */
 
+#define RSSI_MONITOR_EVT_VERSION   1
+typedef struct {
+    u8 version;
+    s8 cur_rssi;
+    mac_addr BSSID;
+} rssi_monitor_evt;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)) || defined(RTW_VENDOR_EXT_SUPPORT)
 extern int rtw_cfgvendor_attach(struct wiphy *wiphy);
@@ -628,10 +626,8 @@ void rtw_cfgvendor_rssi_monitor_evt(_adapter *padapter);
 #endif
 
 #ifdef CONFIG_RTW_CFGVENDOR_RANDOM_MAC_OUI
-void rtw_hal_pno_random_gen_mac_addr(PADAPTER adapter);
-#endif
-#if defined(CONFIG_RTW_CFGVENDOR_RANDOM_MAC_OUI) || defined(CONFIG_RTW_SCAN_RAND)
-void rtw_hal_set_hw_mac_addr(PADAPTER adapter, u8 *mac_addr);
+void rtw_hal_pno_random_gen_mac_addr(_adapter *adapter);
+void rtw_hal_set_hw_mac_addr(_adapter *adapter, u8 *mac_addr);
 #endif
 
 

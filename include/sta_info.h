@@ -15,17 +15,19 @@
 #ifndef __STA_INFO_H_
 #define __STA_INFO_H_
 
-#include <cmn_info/rtw_sta_info.h>
+#ifdef CONFIG_CORE_TXSC
+#include <rtw_xmit_shortcut.h>
+#endif
+
+#ifdef CONFIG_RTW_CORE_RXSC
+#include <rtw_recv_shortcut.h>
+#endif
 
 #define IBSS_START_MAC_ID	2
 #define NUM_STA MACID_NUM_SW_LIMIT
 
 #ifndef CONFIG_RTW_MACADDR_ACL
-	#ifdef CONFIG_AP_MODE
 	#define CONFIG_RTW_MACADDR_ACL 1
-	#else
-	#define CONFIG_RTW_MACADDR_ACL 0
-	#endif
 #endif
 
 #ifndef CONFIG_RTW_PRE_LINK_STA
@@ -150,18 +152,17 @@ struct	stainfo_stats	{
 	u32 tx_tp_kbits;
 	u32 smooth_tx_tp_kbits;
 
-#ifdef CONFIG_LPS_CHK_BY_TP
-	u64 acc_tx_bytes;
-	u64 acc_rx_bytes;
-#endif
-
 	/* unicast only */
 	u64 last_rx_data_uc_pkts; /* For Read & Clear requirement in proc_get_rx_stat() */
 	u32 duplicate_cnt;	/* Read & Clear, in proc_get_rx_stat() */
 	u32 rxratecnt[128];	/* Read & Clear, in proc_get_rx_stat() */
 	u32 tx_ok_cnt;		/* Read & Clear, in proc_get_tx_stat() */
 	u32 tx_fail_cnt;	/* Read & Clear, in proc_get_tx_stat() */
+	u32 tx_fail_cnt_sum;	/* cumulative counts */
 	u32 tx_retry_cnt;	/* Read & Clear, in proc_get_tx_stat() */
+	u32 tx_retry_cnt_sum;	/* cumulative counts */
+	u64 total_tx_retry_cnt;
+	u32 rx_retry_cnt;
 #ifdef CONFIG_RTW_MESH
 	u32 rx_hwmp_pkts;
 	u32 last_rx_hwmp_pkts;
@@ -262,6 +263,15 @@ struct rtw_atlm_param {
 };
 #endif
 
+#ifdef CONFIG_AP_CMD_DISPR
+struct rtw_add_del_sta_obj {
+	_list list;
+	struct sta_info *sta;
+	u8 is_add_sta;
+	u16 aid;
+};
+#endif
+
 struct sta_info {
 
 	_lock	lock;
@@ -271,7 +281,12 @@ struct sta_info {
 	/* _list sleep_list; */ /* sleep_q */
 	/* _list wakeup_list; */ /* wakeup_q */
 	_adapter *padapter;
-	struct cmn_sta_info cmn;
+	struct _ADAPTER_LINK *padapter_link;
+
+	struct rtw_phl_stainfo_t *phl_sta;
+
+	/* move to phl station info */
+	/* struct cmn_sta_info cmn; */
 
 	struct sta_xmit_priv sta_xmitpriv;
 	struct sta_recv_priv sta_recvpriv;
@@ -282,10 +297,6 @@ struct sta_info {
 #endif
 	_queue sleep_q;
 	unsigned int sleepq_len;
-#ifdef CONFIG_RTW_MGMT_QUEUE
-	_queue mgmt_sleep_q;
-	unsigned int mgmt_sleepq_len;
-#endif
 
 	uint state;
 	uint qos_option;
@@ -304,6 +315,20 @@ struct sta_info {
 	union Keytype	dot118021x_UncstKey;
 	union pn48		dot11txpn;			/* PN48 used for Unicast xmit */
 	union pn48		dot11rxpn;			/* PN48 used for Unicast recv. */
+	s8		hw_decrypted; /* STA HW security is ready or not */
+
+#ifdef RTW_PHL_TX
+	u8	iv_len;
+	u8	icv_len;
+	u8	iv[18];
+	u8	icv[16];
+#endif
+
+#ifdef CONFIG_RTW_CORE_RXSC
+	u32 rxsc_idx_new;
+	u32 rxsc_idx_cached;
+	struct core_rxsc_entry rxsc_entry[NUM_RXSC_ENTRY];
+#endif
 	ATOMIC_T	keytrack;
 #ifdef CONFIG_RTW_MESH
 	/* peer's GTK, RX only */
@@ -334,9 +359,9 @@ struct sta_info {
 
 	u8	cts2self;
 	u8	rtsen;
+	u8	hw_rts_en;
 
 	u8	init_rate;
-	u8	wireless_mode;	/* NETWORK_TYPE */
 
 	struct stainfo_stats sta_stats;
 
@@ -376,11 +401,21 @@ struct sta_info {
 
 #ifdef CONFIG_80211N_HT
 	struct ht_priv	htpriv;
+	struct ampdu_priv ampdu_priv;
 #endif
 
 #ifdef CONFIG_80211AC_VHT
 	struct vht_priv	vhtpriv;
 #endif
+
+#ifdef CONFIG_80211AX_HE
+	struct he_priv	hepriv;
+#endif
+	u8 smps_mode; /*spatial multiplexing power save mode. 0:static SMPS, 1:dynamic SMPS, 3:SMPS disabled, 2:reserved*/
+
+#ifdef CONFIG_RTW_MBO
+	struct mbo_priv mbopriv;
+#endif /* CONFIG_RTW_MBO */
 
 	/* Notes:	 */
 	/* STA_Mode: */
@@ -393,10 +428,6 @@ struct sta_info {
 
 	unsigned int expire_to;
 
-	int flags;
-
-	u8 bpairwise_key_installed;
-
 #ifdef CONFIG_AP_MODE
 
 	_list asoc_list;
@@ -407,6 +438,7 @@ struct sta_info {
 	unsigned char chg_txt[128];
 
 	u16 capability;
+	int flags;
 
 	int dot8021xalg;/* 0:disable, 1:psk, 2:802.1x */
 	int wpa_psk;/* 0:disable, bit(0): WPA, bit(1):WPA2 */
@@ -417,7 +449,9 @@ struct sta_info {
 
 	u32 akm_suite_type;
 
+	u8 bpairwise_key_installed;
 #ifdef CONFIG_RTW_80211R
+	struct rtw_sta_ft_info_t ft_peer;
 	u8 ft_pairwise_key_installed;
 #endif
 
@@ -480,6 +514,10 @@ struct sta_info {
 	u16 pid; /* pairing id */
 #endif
 
+#ifdef CONFIG_AP_CMD_DISPR
+	struct rtw_add_del_sta_obj *add_del_sta_obj;
+#endif
+
 #endif /* CONFIG_AP_MODE	 */
 
 #ifdef CONFIG_RTW_MESH
@@ -502,17 +540,15 @@ struct sta_info {
 #endif
 
 	u8		IOTPeer;			/* Enum value.	HT_IOT_PEER_E */
-#ifdef CONFIG_LPS_PG
-	u8		lps_pg_rssi_lv;
-#endif
 
 	/* To store the sequence number of received management frame */
 	u16 RxMgmtFrameSeqNum;
 
 	struct st_ctl_t st_ctl;
 	u8 max_agg_num_minimal_record; /*keep minimal tx desc max_agg_num setting*/
-	u8 curr_rx_rate;
-	u8 curr_rx_rate_bmc;
+	u8 curr_rx_gi_ltf;
+	u16 curr_rx_rate;
+	u16 curr_rx_rate_bmc;
 #ifdef CONFIG_RTS_FULL_BW
 	bool vendor_8812;
 #endif
@@ -529,7 +565,33 @@ struct sta_info {
 	u8 tx_q_enable;
 	struct __queue tx_queue;
 	_workitem tx_q_work;
+
+#ifdef CONFIG_CORE_TXSC
+	u32 txsc_cache_hit;
+	u32 txsc_cache_miss;
+	u32 txsc_path_slow;
+	u32 txsc_path_ps;
+	u8 txsc_cur_idx; /* next entry to add */
+	u8 txsc_cache_idx; /* latest cache idx */
+	u8 txsc_cache_num; /* num of txsc entry */
+	struct txsc_entry txsc_entry_cache[CORE_TXSC_ENTRY_NUM];
+	u8 debug_buf[CORE_TXSC_DEBUG_BUF_SIZE];
+#endif /* CONFIG_CORE_TXSC */
+	u32 snr_fd_total[4];
+	u32 snr_td_total[4];
+	u8 snr_fd_avg[4];
+	u8 snr_td_avg[4];
+	u32 snr_num;
+
+	u8 start_active;/*Used to note the first time receive data frame*/
+	u32 start_active_time;
+	u32 latest_active_time;
+
+	ATOMIC_T deleting;
+	u32 first_auth_time;
 };
+
+#define STA_AUTH_TO 2000
 
 #ifdef CONFIG_RTW_MESH
 #define STA_SET_MESH_PLINK(sta, link) (sta)->plink = link
@@ -683,8 +745,13 @@ struct	sta_priv {
 	_list auth_list;
 	_lock asoc_list_lock;
 	_lock auth_list_lock;
+	_lock active_time_lock;
 	u8 asoc_list_cnt;
 	u8 auth_list_cnt;
+#ifdef CONFIG_AP_CMD_DISPR
+	_list add_sta_list;
+	u8 add_sta_list_cnt;
+#endif
 
 	unsigned int auth_to;  /* sec, time to expire in authenticating. */
 	unsigned int assoc_to; /* sec, time to expire before associating. */
@@ -753,12 +820,30 @@ extern u32	_rtw_free_sta_priv(struct sta_priv *pstapriv);
 int rtw_stainfo_offset(struct sta_priv *stapriv, struct sta_info *sta);
 struct sta_info *rtw_get_stainfo_by_offset(struct sta_priv *stapriv, int offset);
 
-extern struct sta_info *rtw_alloc_stainfo(struct	sta_priv *pstapriv, const u8 *hwaddr);
-extern u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta);
+extern struct sta_info *rtw_alloc_stainfo(struct sta_priv *stapriv, const u8 *hwaddr,
+					enum rtw_device_type dtype,
+					u16 main_id,
+					const u8 link_idx,
+					enum phl_cmd_type cmd_type);
+
+extern struct sta_info *rtw_alloc_stainfo_sw(struct sta_priv *stapriv,
+					enum rtw_device_type dtype,
+					u16 main_id,
+					const u8 link_idx,
+					const u8 *hwaddr);
+extern u32 rtw_alloc_stainfo_hw(struct	sta_priv *stapriv, struct sta_info *psta);
+
+extern u32 rtw_free_stainfo(_adapter *padapter , struct sta_info *psta);
+u32	rtw_free_stainfo_sw(_adapter *padapter, struct sta_info *psta);
 extern void rtw_free_all_stainfo(_adapter *padapter);
+extern bool rtw_is_self_stainfo(_adapter *padapter, struct sta_info *sta);
+extern u32 rtw_free_mld_stainfo(_adapter *padapter, struct rtw_phl_mld_t *mld);
+extern struct sta_info *rtw_get_stainfo_by_macid(struct sta_priv *pstapriv, u16 macid);
+extern struct sta_info *rtw_get_bcmc_stainfo(_adapter *padapter, struct _ADAPTER_LINK *padapter_link);
 extern struct sta_info *rtw_get_stainfo(struct sta_priv *pstapriv, const u8 *hwaddr);
-extern u32 rtw_init_bcmc_stainfo(_adapter *padapter);
-extern struct sta_info *rtw_get_bcmc_stainfo(_adapter *padapter);
+
+u32	rtw_free_self_stainfo(_adapter *adapter);
+u32 rtw_init_self_stainfo(_adapter *adapter, enum phl_cmd_type cmd_type);
 
 #ifdef CONFIG_AP_MODE
 u16 rtw_aid_alloc(_adapter *adapter, struct sta_info *sta);
@@ -770,8 +855,8 @@ extern u8 rtw_access_ctrl(_adapter *adapter, const u8 *mac_addr);
 void dump_macaddr_acl(void *sel, _adapter *adapter);
 #endif
 
-bool rtw_is_pre_link_sta(struct sta_priv *stapriv, u8 *addr);
 #if CONFIG_RTW_PRE_LINK_STA
+bool rtw_is_pre_link_sta(struct sta_priv *stapriv, u8 *addr);
 struct sta_info *rtw_pre_link_sta_add(struct sta_priv *stapriv, u8 *hwaddr);
 void rtw_pre_link_sta_del(struct sta_priv *stapriv, u8 *hwaddr);
 void rtw_pre_link_sta_ctl_reset(struct sta_priv *stapriv);

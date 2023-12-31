@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2019 Realtek Corporation.
+ * Copyright(c) 2007 - 2021 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -15,39 +15,37 @@
 #ifndef __DRV_TYPES_SDIO_H__
 #define __DRV_TYPES_SDIO_H__
 
-/* SDIO Header Files */
 #ifdef PLATFORM_LINUX
-	#include <linux/mmc/sdio_func.h>
-	#include <linux/mmc/sdio_ids.h>
-	#include <linux/mmc/host.h>
-	#include <linux/mmc/card.h>
-
-	#ifdef CONFIG_PLATFORM_SPRD
-		#include <linux/gpio.h>
-		#include <custom_gpio.h>
-	#endif /* CONFIG_PLATFORM_SPRD */
-#endif
+#include <linux/mmc/sdio_func.h>
+#include <linux/mmc/sdio_ids.h>
+#include <linux/mmc/host.h>
+#include <linux/mmc/card.h>
+#endif /* PLATFORM_LINUX */
 
 #define RTW_SDIO_CLK_33M	33000000
 #define RTW_SDIO_CLK_40M	40000000
 #define RTW_SDIO_CLK_80M	80000000
 #define RTW_SDIO_CLK_160M	160000000
 
-typedef struct sdio_data {
+struct sdio_data {
 	u8  func_number;
 
 	u8  tx_block_mode;
 	u8  rx_block_mode;
 	u32 block_transfer_len;
+	u16 max_byte_size;	/* MAX size for cmd53 byte mode */
+	u8 irq_alloc;
 
 #ifdef PLATFORM_LINUX
 	struct mmc_card *card;
-	struct sdio_func	*func;
+	struct sdio_func *func;
+	u8 *tmpbuf;		/* buffer for register access */
+	u8 tmpbuf_sz;
+#endif
 	_thread_hdl_ sys_sdio_irq_thd;
 	unsigned int clock;
 	unsigned int timing;
 	u8	sd3_bus_mode;
-#endif
 
 #ifdef DBG_SDIO
 #ifdef PLATFORM_LINUX
@@ -77,18 +75,16 @@ typedef struct sdio_data {
 	u8 err_test_triggered;	/* Simulate error already triggered */
 #endif /* DBG_SDIO >= 3 */
 #endif /* DBG_SDIO */
-} SDIO_DATA, *PSDIO_DATA;
+};
 
-#define dvobj_to_sdio_func(d)	((d)->intf_data.func)
-
-#define RTW_SDIO_ADDR_CMD52_BIT		(1<<17)
+#define RTW_SDIO_ADDR_CMD52_BIT	(1<<17)
 #define RTW_SDIO_ADDR_CMD52_GEN(a)	(a | RTW_SDIO_ADDR_CMD52_BIT)
 #define RTW_SDIO_ADDR_CMD52_CLR(a)	(a&~RTW_SDIO_ADDR_CMD52_BIT)
 #define RTW_SDIO_ADDR_CMD52_CHK(a)	(a&RTW_SDIO_ADDR_CMD52_BIT ? 1 : 0)
 
 #define RTW_SDIO_ADDR_F0_BIT		(1<<18)
-#define RTW_SDIO_ADDR_F0_GEN(a)		(a | RTW_SDIO_ADDR_F0_BIT)
-#define RTW_SDIO_ADDR_F0_CLR(a)		(a&~RTW_SDIO_ADDR_F0_BIT)
-#define RTW_SDIO_ADDR_F0_CHK(a)		(a&RTW_SDIO_ADDR_F0_BIT ? 1 : 0)
+#define RTW_SDIO_ADDR_F0_GEN(a)	(a | RTW_SDIO_ADDR_F0_BIT)
+#define RTW_SDIO_ADDR_F0_CLR(a)	(a&~RTW_SDIO_ADDR_F0_BIT)
+#define RTW_SDIO_ADDR_F0_CHK(a)	(a&RTW_SDIO_ADDR_F0_BIT ? 1 : 0)
 
 #endif

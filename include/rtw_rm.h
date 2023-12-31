@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -24,6 +24,10 @@ u8 rm_post_event_hdl(_adapter *padapter, u8 *pbuf);
 
 #define RM_CAP_ARG(x) ((u8 *)(x))[4], ((u8 *)(x))[3], ((u8 *)(x))[2], ((u8 *)(x))[1], ((u8 *)(x))[0]
 #define RM_CAP_FMT "%02x %02x%02x %02x%02x"
+
+#ifndef MIN
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#endif
 
 /* remember to modify rm_event_name() when adding new event */
 enum RM_EV_ID {
@@ -66,8 +70,8 @@ struct rm_priv {
 	struct rm_clock clock[RM_TIMER_NUM];
 	u8 rm_en_cap_def[5];
 	u8 rm_en_cap_assoc[5];
-
 	u8 meas_token;
+
 	/* rm debug */
 	void *prm_sel;
 };
@@ -89,9 +93,9 @@ void rtw_ap_parse_sta_rm_en_cap(_adapter *padapter,
 
 int rm_post_event(_adapter *padapter, u32 rmid, enum RM_EV_ID evid);
 void rm_handler(_adapter *padapter, struct rm_event *pev);
+int rm_get_chset(struct rm_obj *prm);
 
 u8 rm_add_nb_req(_adapter *padapter, struct sta_info *psta);
-
 /* from ioctl */
 int rm_send_bcn_reqs(_adapter *padapter, u8 *sta_addr, u8 op_class, u8 ch,
 	u16 measure_duration, u8 measure_mode, u8 *bssid, u8 *ssid,
@@ -100,6 +104,11 @@ int rm_send_bcn_reqs(_adapter *padapter, u8 *sta_addr, u8 op_class, u8 ch,
 	u8 n_elem_id, u8 *elem_id_list);
 void indicate_beacon_report(u8 *sta_addr,
 	u8 n_measure_rpt, u32 elem_len, u8 *elem);
+#else
+#define RM_IE_handler(a, b) do{} while (0)
 
 #endif /*CONFIG_RTW_80211K */
+
+void rm_update_cap(u8 *frame_head, _adapter *pa, u32 pktlen, int offset);
+
 #endif /* __RTW_RM_H_ */

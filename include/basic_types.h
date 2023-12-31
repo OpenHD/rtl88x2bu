@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -31,44 +31,6 @@
 	#define _FALSE	FALSE
 #endif
 
-#ifdef PLATFORM_WINDOWS
-
-	typedef signed char s8;
-	typedef unsigned char u8;
-
-	typedef signed short s16;
-	typedef unsigned short u16;
-
-	typedef signed long s32;
-	typedef unsigned long u32;
-
-	typedef unsigned int	uint;
-	typedef	signed int		sint;
-
-
-	typedef signed long long s64;
-	typedef unsigned long long u64;
-
-	#ifdef NDIS50_MINIPORT
-
-		#define NDIS_MAJOR_VERSION       5
-		#define NDIS_MINOR_VERSION       0
-
-	#endif
-
-	#ifdef NDIS51_MINIPORT
-
-		#define NDIS_MAJOR_VERSION       5
-		#define NDIS_MINOR_VERSION       1
-
-	#endif
-
-	typedef NDIS_PROC proc_t;
-
-	typedef LONG atomic_t;
-
-#endif
-
 
 #ifdef PLATFORM_LINUX
 	#include <linux/version.h>
@@ -95,7 +57,6 @@ enum {
 	typedef	__kernel_ssize_t	SSIZE_T;
 	#define FIELD_OFFSET(s, field)	((SSIZE_T)&((s *)(0))->field)
 
-#define NDIS_OID uint
 #endif /*PLATFORM_LINUX*/
 
 
@@ -112,12 +73,12 @@ enum {
 
 	typedef unsigned int	uint;
 	typedef	signed int		sint;
-	typedef long atomic_t;
 
 	typedef signed long long s64;
 	typedef unsigned long long u64;
 
 	typedef u32 dma_addr_t;
+	typedef long atomic_t;
 
 	typedef void (*proc_t)(void *);
 
@@ -168,15 +129,15 @@ enum {
 /*
 * Read LE data from memory to host byte order
 */
-#define ReadLE4Byte(_ptr)	le32_to_cpu(*((u32 *)(_ptr)))
-#define ReadLE2Byte(_ptr)	le16_to_cpu(*((u16 *)(_ptr)))
+#define ReadLE4Byte(_ptr)	le32_to_cpu(*((__le32 *)(_ptr)))
+#define ReadLE2Byte(_ptr)	le16_to_cpu(*((__le16 *)(_ptr)))
 #define ReadLE1Byte(_ptr)	(*((u8 *)(_ptr)))
 
 /*
 * Read BE data from memory to host byte order
 */
-#define ReadBEE4Byte(_ptr)	be32_to_cpu(*((u32 *)(_ptr)))
-#define ReadBE2Byte(_ptr)	be16_to_cpu(*((u16 *)(_ptr)))
+#define ReadBEE4Byte(_ptr)	be32_to_cpu(*((__be32 *)(_ptr)))
+#define ReadBE2Byte(_ptr)	be16_to_cpu(*((__be16 *)(_ptr)))
 #define ReadBE1Byte(_ptr)	(*((u8 *)(_ptr)))
 
 /*
@@ -196,15 +157,15 @@ enum {
 /*
 * Return 4-byte value in host byte ordering from 4-byte pointer in litten-endian system.
 */
-#define LE_P4BYTE_TO_HOST_4BYTE(__pStart) (le32_to_cpu(*((u32 *)(__pStart))))
-#define LE_P2BYTE_TO_HOST_2BYTE(__pStart) (le16_to_cpu(*((u16 *)(__pStart))))
+#define LE_P4BYTE_TO_HOST_4BYTE(__pStart) (le32_to_cpu(*((__le32 *)(__pStart))))
+#define LE_P2BYTE_TO_HOST_2BYTE(__pStart) (le16_to_cpu(*((__le16 *)(__pStart))))
 #define LE_P1BYTE_TO_HOST_1BYTE(__pStart) ((*((u8 *)(__pStart))))
 
 /*
 * Return 4-byte value in host byte ordering from 4-byte pointer in big-endian system.
 */
-#define BE_P4BYTE_TO_HOST_4BYTE(__pStart) (be32_to_cpu(*((u32 *)(__pStart))))
-#define BE_P2BYTE_TO_HOST_2BYTE(__pStart) (be16_to_cpu(*((u16 *)(__pStart))))
+#define BE_P4BYTE_TO_HOST_4BYTE(__pStart) (be32_to_cpu(*((__le32 *)(__pStart))))
+#define BE_P2BYTE_TO_HOST_2BYTE(__pStart) (be16_to_cpu(*((__le16 *)(__pStart))))
 #define BE_P1BYTE_TO_HOST_1BYTE(__pStart) ((*((u8 *)(__pStart))))
 
 /*
@@ -345,8 +306,20 @@ enum {
 
 /* Get the N-bytes aligment offset from the current length */
 #define N_BYTE_ALIGMENT(__Value, __Aligment) ((__Aligment == 1) ? (__Value) : (((__Value + __Aligment - 1) / __Aligment) * __Aligment))
+#define N_BYTE_ALIGNMENT(__Value, __Alignment) ((__Alignment == 1)\
+? (__Value) : (((__Value + __Alignment - 1) / __Alignment) * __Alignment))
 
 typedef unsigned char	BOOLEAN, *PBOOLEAN, boolean;
+
+#define _FAIL				0
+#define _SUCCESS			1
+
+#undef _TRUE
+#define _TRUE		1
+
+#undef _FALSE
+#define _FALSE		0
+
 
 #define TEST_FLAG(__Flag, __testFlag)		(((__Flag) & (__testFlag)) != 0)
 #define SET_FLAG(__Flag, __setFlag)			((__Flag) |= __setFlag)

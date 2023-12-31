@@ -55,7 +55,8 @@ struct moinfo {
 	}u;
 };
 
-sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf);
+sint rtw_fill_radiotap_hdr(_adapter *padapter, struct _ADAPTER_LINK *padapter_link,
+	struct rx_pkt_attrib *a, struct rtw_recv_pkt *rx_req, u8 *buf);
 
 void rx_query_moinfo(struct rx_pkt_attrib *a, u8 *desc);
 

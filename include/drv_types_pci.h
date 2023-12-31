@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -56,5 +56,41 @@ typedef struct _RT_ISR_CONTENT {
 		u16			IntReg2Byte;
 	};
 } RT_ISR_CONTENT, *PRT_ISR_CONTENT;
+
+typedef struct pci_data {
+#ifdef PLATFORM_LINUX
+	struct pci_dev *ppcidev;
+
+	/* PCI MEM map */
+	unsigned long	pci_mem_end;	/* shared mem end	*/
+	unsigned long	pci_mem_start;	/* shared mem start	*/
+
+	/* PCI IO map */
+	unsigned long	pci_base_addr;	/* device I/O address	*/
+
+	#ifdef RTK_129X_PLATFORM
+	unsigned long	ctrl_start;
+	/* PCI MASK addr */
+	unsigned long	mask_addr;
+
+	/* PCI TRANSLATE addr */
+	unsigned long	tran_addr;
+
+	_lock	io_reg_lock;
+	#endif
+
+	/* PciBridge */
+	struct pci_priv pcipriv;
+
+	u8 irq_alloc;
+	unsigned int irq; /* get from pci_dev.irq, store to net_device.irq */
+	u16	irqline;
+	u8	irq_enabled;
+	RT_ISR_CONTENT	isr_content;
+	_lock	irq_th_lock;
+
+	u8	bdma64;
+#endif/* PLATFORM_LINUX */
+} PCI_DATA, *PPCI_DATA;
 
 #endif

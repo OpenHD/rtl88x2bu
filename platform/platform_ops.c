@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2013 - 2017 Realtek Corporation.
+ * Copyright(c) 2013 - 2022 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -12,21 +12,24 @@
  * more details.
  *
  *****************************************************************************/
-#ifndef CONFIG_PLATFORM_OPS
-/*
- * Return:
- *	0:	power on successfully
- *	others: power on failed
- */
+#include <drv_types.h>
+
 int platform_wifi_power_on(void)
 {
-	int ret = 0;
-
-
-	return ret;
+        return 0;
 }
 
 void platform_wifi_power_off(void)
 {
+
 }
-#endif /* !CONFIG_PLATFORM_OPS */
+
+void platform_wifi_get_oob_irq(int *oob_irq)
+{
+
+}
+
+void platform_wifi_mac_addr(u8 *mac_addr)
+{
+
+}

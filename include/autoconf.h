@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2015 - 2017 Realtek Corporation.
+ * Copyright(c) 2015 - 2021 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -13,36 +13,72 @@
  *
  *****************************************************************************/
 #define CONFIG_SINGLE_IMG
-/* #define CONFIG_DISABLE_ODM */
+/***** temporarily flag *******/
+/*#define CONFIG_NO_FW*/
+/*#define CONFIG_DISABLE_ODM*/
+#define SCAN_PER_CH_EX_TIME 100
+#define CONFIG_MSG_NUM 128
+
+#define RTW_WKARD_CORE_RSSI_V1
+#ifdef RTW_WKARD_CORE_RSSI_V1
+#define CONFIG_RX_PSTS_PER_PKT
+#define CONFIG_SIGNAL_STAT_PROCESS
+/*#define DBG_RX_SIGNAL_DISPLAY_PROCESSING*/
+#define DBG_RX_SIGNAL_DISPLAY_SSID_MONITORED "rtw_ap"
+#endif
+
+
+// nrm #ifndef DBG_MEM_ALLOC
+// nrm #define DBG_MEM_ALLOC
+
+// nrm #define DBG_PHL_MEM_ALLOC
+// nrm #define DBG_HAL_MAC_MEM_MOINTOR
+// nrm #define DBG_HAL_MEM_MOINTOR
+// nrm #endif
+/*#define CONFIG_PHL_USE_KMEM_ALLOC*/
+
+/*
+ * Work around Config
+ */
+#define RTW_WKARD_DIS_PROBE_REQ_RPT_TO_HOSTAPD
+
+#ifdef CONFIG_BTC
+#define RTK_WKARD_CORE_BTC_STBC_CAP
+#endif
 
 /*
  * Public  General Config
  */
 #define AUTOCONF_INCLUDED
-#define RTL871X_MODULE_NAME "88x2BU"
-#define DRV_NAME "rtl88x2bu"
+#define DRV_NAME "rtl8852bu"
 
-/* Set CONFIG_RTL8822B from Makefile */
-#ifndef CONFIG_RTL8822B
-#define CONFIG_RTL8822B
-#endif
-#define CONFIG_USB_HCI	1
-#define PLATFORM_LINUX	1
+#define CONFIG_USB_HCI
 
 /*
  * Wi-Fi Functions Config
  */
 
+
 #define CONFIG_80211N_HT
 #define CONFIG_80211AC_VHT
+#define CONFIG_80211AX_HE
 #ifdef CONFIG_80211AC_VHT
 	#ifndef CONFIG_80211N_HT
 		#define CONFIG_80211N_HT
 	#endif
 #endif
+#ifdef CONFIG_80211AX_HE
+	#ifndef CONFIG_80211N_HT
+		#define CONFIG_80211N_HT
+	#endif
+	#ifndef CONFIG_80211AC_VHT
+		#define CONFIG_80211AC_VHT
+	#endif
+#endif
 
-#ifdef CONFIG_80211AC_VHT
-	#define CONFIG_BEAMFORMING
+#define CONFIG_BEAMFORMING
+#ifdef CONFIG_BEAMFORMING
+/*#define RTW_WKARD_TX_DISABLE_BFEE*/
 #endif
 
 /* set CONFIG_IOCTL_CFG80211 from Makefile */
@@ -57,63 +93,64 @@
 	/* #define RTW_USE_CFG80211_STA_EVENT */ /* Indecate new sta asoc through cfg80211_new_sta */
 	#define CONFIG_CFG80211_FORCE_COMPATIBLE_2_6_37_UNDER
 	/* #define CONFIG_DEBUG_CFG80211 */
-	/* #define CONFIG_DRV_ISSUE_PROV_REQ */ /* IOT FOR S2 */
 	#define CONFIG_SET_SCAN_DENY_TIMER
 #endif
+
+/* #define CONFIG_TX_AMSDU */
+#ifdef CONFIG_TX_AMSDU
+	#define CONFIG_TX_AMSDU_SW_MODE	1
+#endif
+
+#define CONFIG_HW_RTS
 
 /*
  * Internal  General Config
  */
-/* #define CONFIG_H2CLBK */
-
-#define RTW_HALMAC		/* Use HALMAC architecture, necessary for 8822B */
-#define CONFIG_EMBEDDED_FWIMG	1
-#if (CONFIG_EMBEDDED_FWIMG==1)
+#define CONFIG_EMBEDDED_FWIMG
+#ifdef CONFIG_EMBEDDED_FWIMG
 	#define	LOAD_FW_HEADER_FROM_DRIVER
 #endif
 /* #define CONFIG_FILE_FWIMG */
 
 #define CONFIG_XMIT_ACK
 #ifdef CONFIG_XMIT_ACK
+	#define CONFIG_XMIT_ACK_BY_CCX_RPT
+	#ifdef CONFIG_XMIT_ACK_BY_CCX_RPT
+		#define RTW_WKARD_CCX_RPT_LIMIT_CTRL
+		#define CONFIG_PHL_DEFAULT_MGNT_Q_RPT_EN
+	#endif
 	#define CONFIG_ACTIVE_KEEP_ALIVE_CHECK
+	#define RTW_WKARD_TX_NULL_WD_RP
 #endif
 
-#define CONFIG_RECV_REORDERING_CTRL	1
+/*#define CONFIG_RECV_REORDERING_CTRL*/
 
-/* #define CONFIG_SUPPORT_USB_INT */
-#ifdef CONFIG_SUPPORT_USB_INT
-	/* #define CONFIG_USB_INTERRUPT_IN_PIPE  1 */
-#endif /* CONFIG_SUPPORT_USB_INT */
+#define CONFIG_USB_INTERRUPT_IN_PIPE
 
-#ifdef CONFIG_POWER_SAVING
-	#define CONFIG_IPS	1
-	#ifdef CONFIG_IPS
-	/* #define CONFIG_IPS_LEVEL_2 1*/ /*enable this to set default IPS mode to IPS_LEVEL_2*/
-	#define CONFIG_IPS_CHECK_IN_WD /* Do IPS Check in WatchDog.	*/
-	/* #define CONFIG_FWLPS_IN_IPS */
+/* #define CONFIG_SIGNAL_STAT_PROCESS */
+
+#ifdef CONFIG_POWER_SAVE
+	/* #define CONFIG_RTW_IPS */
+	/* #define CONFIG_RTW_LPS */
+	#ifdef CONFIG_RTW_IPS
+		#define CONFIG_FWIPS
 	#endif
-	/* #define SUPPORT_HW_RFOFF_DETECTED	1 */
-
-	#define CONFIG_LPS	1
-	#if defined(CONFIG_LPS)
-		#define CONFIG_LPS_LCLK	1
+	#if defined(CONFIG_RTW_IPS) || defined(CONFIG_RTW_LPS)
+		#define CONFIG_PS_FW_DBG
 	#endif
+#endif /* CONFIG_POWER_SAVE */
 
-	#ifdef CONFIG_LPS_LCLK
-		#ifdef CONFIG_POWER_SAVING
-			/* #define CONFIG_XMIT_THREAD_MODE */
-		#endif /* CONFIG_POWER_SAVING */
-		#ifndef CONFIG_SUPPORT_USB_INT
-			#define LPS_RPWM_WAIT_MS 300
-			#define CONFIG_DETECT_CPWM_BY_POLLING
-		#endif /* !CONFIG_SUPPORT_USB_INT */
-		/* #define DBG_CHECK_FW_PS_STATE */
-	#endif /* CONFIG_LPS_LCLK */
+#ifdef CONFIG_WOWLAN
+	#define CONFIG_GTK_OL
+	/* #define CONFIG_ARP_KEEP_ALIVE */
+#endif /* CONFIG_WOWLAN */
 
-	#ifdef CONFIG_LPS
-		#define CONFIG_WMMPS_STA 1
-	#endif /* CONFIG_LPS */
-#endif /*CONFIG_POWER_SAVING*/
+#ifdef CONFIG_GPIO_WAKEUP
+	#ifndef WAKEUP_GPIO_IDX
+		#define WAKEUP_GPIO_IDX	10	/* WIFI Chip Side */
+	#endif /*!WAKEUP_GPIO_IDX*/
+#endif /* CONFIG_GPIO_WAKEUP */
+
 	/* before link */
 	/* #define CONFIG_ANTENNA_DIVERSITY */
 
@@ -127,6 +164,7 @@
 
 /*#endif*/	/* CONFIG_MP_INCLUDED */
 
+#define CONFIG_AP_MODE
 #ifdef CONFIG_AP_MODE
 	/* #define CONFIG_INTERRUPT_BASED_TXBCN */ /* Tx Beacon when driver BCN_OK ,BCN_ERR interrupt occurs */
 	#if defined(CONFIG_CONCURRENT_MODE) && defined(CONFIG_INTERRUPT_BASED_TXBCN)
@@ -139,11 +177,13 @@
 
 	#define CONFIG_NATIVEAP_MLME
 	#ifndef CONFIG_NATIVEAP_MLME
-		#define CONFIG_HOSTAPD_MLME	1
+		#define CONFIG_HOSTAPD_MLME
 	#endif
-	#define CONFIG_FIND_BEST_CHANNEL	1
+	/*#define CONFIG_RTW_HOSTAPD_ACS*/
+	/*#define CONFIG_FIND_BEST_CHANNEL*/
 #endif
 
+#define CONFIG_P2P
 #ifdef CONFIG_P2P
 	/* The CONFIG_WFD is for supporting the Wi-Fi display */
 	#define CONFIG_WFD
@@ -169,21 +209,20 @@
 */
 	/* #define CONFIG_TDLS_AUTOSETUP */
 	#define CONFIG_TDLS_AUTOCHECKALIVE
-	#define CONFIG_TDLS_CH_SW		/* Enable "CONFIG_TDLS_CH_SW" by default, however limit it to only work in wifi logo test mode but not in normal mode currently */
+	/* #define CONFIG_TDLS_CH_SW */ /* Not support yet */
 #endif
 
 
-#define CONFIG_SKB_COPY	1 /* amsdu */
+#define CONFIG_SKB_COPY /* amsdu */
 
 #define CONFIG_RTW_LED
 #ifdef CONFIG_RTW_LED
-	#define CONFIG_RTW_SW_LED
+	/* #define CONFIG_RTW_SW_LED */
 	#ifdef CONFIG_RTW_SW_LED
 		/* #define CONFIG_RTW_LED_HANDLED_BY_CMD_THREAD */
 	#endif
 #endif /* CONFIG_RTW_LED */
 
-#define USB_INTERFERENCE_ISSUE /* this should be checked in all usb interface */
 #define CONFIG_GLOBAL_UI_PID
 
 /*#define CONFIG_RTW_80211K*/
@@ -192,39 +231,34 @@
 /*#define CONFIG_RESUME_IN_WORKQUEUE */
 /*#define CONFIG_SET_SCAN_DENY_TIMER */
 #define CONFIG_LONG_DELAY_ISSUE
-#define CONFIG_NEW_SIGNAL_STAT_PROCESS
 /* #define CONFIG_SIGNAL_DISPLAY_DBM */ /*display RX signal with dbm */
 #ifdef CONFIG_SIGNAL_DISPLAY_DBM
 /* #define CONFIG_BACKGROUND_NOISE_MONITOR */
 #endif
-#define RTW_NOTCH_FILTER 0 /* 0:Disable, 1:Enable, */
-#define RTW_FORCE_CTS_TO_SELF_UNDER_LOW_RSSI
+
+#define CONFIG_SCAN_BACKOP_STA
+
 
 /*
  * Interface  Related Config
  */
 
 #ifndef CONFIG_MINIMAL_MEMORY_USAGE
-	#define CONFIG_USB_TX_AGGREGATION	1
-	#define CONFIG_USB_RX_AGGREGATION	1
+	#define CONFIG_USB_TX_AGGREGATION
+	#define CONFIG_USB_RX_AGGREGATION
 #endif
 
-/* #define CONFIG_REDUCE_USB_TX_INT	1 */ /* Trade-off: Improve performance, but may cause TX URBs blocked by USB Host/Bus driver on few platforms. */
-/* #define CONFIG_EASY_REPLACEMENT	1 */
+#ifndef CONFIG_DYNAMIC_RX_BUF
+#define CONFIG_DYNAMIC_RX_BUF
+#endif
+
+/* #define CONFIG_REDUCE_USB_TX_INT*/ /* Trade-off: Improve performance, but may cause TX URBs blocked by USB Host/Bus driver on few platforms. */
 
 /*
  * CONFIG_USE_USB_BUFFER_ALLOC_XX uses Linux USB Buffer alloc API and is for Linux platform only now!
  */
-/* #define CONFIG_USE_USB_BUFFER_ALLOC_TX 1 */	/* Trade-off: For TX path, improve stability on some platforms, but may cause performance degrade on other platforms. */
-/* #define CONFIG_USE_USB_BUFFER_ALLOC_RX 1	*/ /* For RX path */
-#ifdef CONFIG_USE_USB_BUFFER_ALLOC_RX
-
-#else
-	#define CONFIG_PREALLOC_RECV_SKB
-	#ifdef CONFIG_PREALLOC_RECV_SKB
-		/* #define CONFIG_FIX_NR_BULKIN_BUFFER */ /* only use PREALLOC_RECV_SKB buffer, don't alloc skb at runtime */
-	#endif
-#endif
+/* #define CONFIG_USE_USB_BUFFER_ALLOC_TX*/	/* Trade-off: For TX path, improve stability on some platforms, but may cause performance degrade on other platforms. */
+/* #define CONFIG_USE_USB_BUFFER_ALLOC_RX*/ /* For RX path */
 
 /*
  * USB VENDOR REQ BUFFER ALLOCATION METHOD
@@ -236,30 +270,30 @@
 #define CONFIG_USB_VENDOR_REQ_MUTEX
 #define CONFIG_VENDOR_REQ_RETRY
 
-/* #define CONFIG_USB_SUPPORT_ASYNC_VDN_REQ 1 */
+/* #define CONFIG_USB_SUPPORT_ASYNC_VDN_REQ*/
+
+/*
+ * If bus rate is lower than Wi-Fi phy rate, it probably causes unstable
+ * throughput for rx. So disable AMSDU may be suggested by SD1.
+ */
+#define CONFIG_DISBALE_RX_AMSDU_FOR_BUS_LOW_SPEED
+
+/*
+ * The CONFIG_QUOTA_TURBO_ENABLE flag to decide that whether halmac
+ * configures a part of the shared buffer to some fw features or not. If
+ * this flag is defined, it means the shared buffer doesn't allocate to fw.
+ */
+#define CONFIG_QUOTA_TURBO_ENABLE
 
 /*
  * HAL  Related Config
  */
-#define RTL8812A_RX_PACKET_INCLUDE_CRC	0
-
 #define CONFIG_RX_PACKET_APPEND_FCS
-
-/* #define CONFIG_ONLY_ONE_OUT_EP_TO_LOW	0 */
-
-#define CONFIG_OUT_EP_WIFI_MODE	0
-
-#define ENABLE_USB_DROP_INCORRECT_OUT
-
-#define CONFIG_ADHOC_WORKAROUND_SETTING	1
-
-#define ENABLE_NEW_RFE_TYPE	0
 
 #define DISABLE_BB_RF	0
 
 #ifdef CONFIG_MP_INCLUDED
 	#define MP_DRIVER 1
-	#define CONFIG_MP_IWPRIV_SUPPORT	1
 	/*
 	 #undef CONFIG_USB_TX_AGGREGATION
 	 #undef CONFIG_USB_RX_AGGREGATION
@@ -283,28 +317,52 @@
 	#endif
 #endif
 
-#ifdef CONFIG_BT_COEXIST
-	/* for ODM and outsrc BT-Coex */
-	#ifndef CONFIG_LPS
-		#define CONFIG_LPS	/* download reserved page to FW */
-	#endif
-#endif /* !CONFIG_BT_COEXIST */
-
-
-
 #ifdef CONFIG_USB_TX_AGGREGATION
 /* #define CONFIG_TX_EARLY_MODE */
 #endif
 
-#define	RTL8188E_EARLY_MODE_PKT_NUM_10	0
-/*#define CONFIG_CUSTOMER01_SMART_ANTENNA */
+#define MAX_XMITBUF_SZ	20480
+#define NR_XMITBUFF	4
+#define MAX_MGNT_XMITBUF_SZ	1536
+#define NR_MGNT_XMITBUFF	32
+#define MAX_RECVBUF_SZ 32768
+#define NR_RECVBUFF 128
+#define NR_RECV_URB 8
+
+#define CONFIG_RTW_REDUCE_MEM
+#ifdef CONFIG_RTW_REDUCE_MEM
+	#define MAX_PHL_TX_RING_ENTRY_NUM 512
+	#define MAX_PHL_RX_RING_ENTRY_NUM 1024
+	#define MAX_TX_RING_NUM MAX_PHL_TX_RING_ENTRY_NUM
+	#define NR_XMITFRAME MAX_PHL_TX_RING_ENTRY_NUM
+	#define RTW_MAX_FRAG_NUM 1
+	/*
+	 * Reduce FW code size
+	*/
+	#define RTW_MAX_FW_SIZE 0x80000
+
+	#define CONFIG_FW_SPECIFY_FROM_CORE
+	#ifdef CONFIG_FW_SPECIFY_FROM_CORE
+		#define MAC_FW_8852B_U2
+		#define MAC_FW_8852B_U3
+		/* #define MAC_FW_CATEGORY_NIC */	/* with pwr gating */
+		#define MAC_FW_CATEGORY_NICCE		/* with clock gating */
+		/* #define MAC_FW_CATEGORY_NIC_PLE */
+		#ifdef CONFIG_WOWLAN
+			#define MAC_FW_CATEGORY_WOWLAN
+		#endif /* CONFIG_WOWLAN */
+	#endif
+#endif
+
+#define CONFIG_FW_IO_OFLD_SUPPORT
 
 /*
  * Debug Related Config
  */
+#define RTW_DETECT_HANG
 #define DBG	1
 
-#define DBG_CONFIG_ERROR_DETECT
+/*#define DBG_CONFIG_ERROR_DETECT*/
 
 /* #define CONFIG_DIS_UPHY */
 /*
@@ -327,13 +385,11 @@
 #define DBG_RX_SIGNAL_DISPLAY_SSID_MONITORED "jeff-ap"
 
 
-
-#define DBG_SHOW_MCUFWDL_BEFORE_51_ENABLE
 #define DBG_ROAMING_TEST
 
 #define DBG_HAL_INIT_PROFILING
 
-#define DBG_MEMORY_LEAK	1
+#define DBG_MEMORY_LEAK
 */
 
 /*#define DBG_FW_DEBUG_MSG_PKT*/  /* FW use this feature to tx debug broadcast pkt. This pkt include FW debug message*/

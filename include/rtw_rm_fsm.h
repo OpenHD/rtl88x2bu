@@ -1,7 +1,7 @@
 
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -234,8 +234,8 @@ struct rm_meas_req {
 	u8 ch_set_ch_amount;
 	s8 rx_pwr;		/* in dBm */
 	u8 rx_bw;
-	u8 rx_rate;
 	u8 rx_rsni;
+	u16 rx_rate;
 };
 
 struct rm_meas_rep {
@@ -284,7 +284,6 @@ struct rm_obj {
 	u64 meas_end_time;
 	int wait_busy;
 	u8 poll_mode;
-	u8 free_run_counter_valid; /* valid:_SUCCESS/invalid:_FAIL */
 
 	struct data_buf buf[MAX_BUF_NUM];
 	bool from_ioctl;

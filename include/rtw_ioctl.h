@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@ enum oid_type {
 
 struct oid_par_priv {
 	void		*adapter_context;
-	NDIS_OID	oid;
+	uint		oid;
 	void		*information_buf;
 	u32		information_buf_len;
 	u32		*bytes_rw;

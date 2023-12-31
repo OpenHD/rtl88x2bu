@@ -70,40 +70,40 @@ void WapiSetIE(_adapter *padapter)
 
 	pWapiInfo->wapiIELength = 0;
 	/* protocol version */
-	memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &protocolVer, 2);
+	_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &protocolVer, 2);
 	pWapiInfo->wapiIELength += 2;
 	/* akm */
-	memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &akmCnt, 2);
+	_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &akmCnt, 2);
 	pWapiInfo->wapiIELength += 2;
 
 	if (pWapiInfo->bWapiPSK) {
-		memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
+		_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
 		pWapiInfo->wapiIELength += 3;
 		pWapiInfo->wapiIE[pWapiInfo->wapiIELength] = 0x2;
 		pWapiInfo->wapiIELength += 1;
 	} else {
-		memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
+		_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
 		pWapiInfo->wapiIELength += 3;
 		pWapiInfo->wapiIE[pWapiInfo->wapiIELength] = 0x1;
 		pWapiInfo->wapiIELength += 1;
 	}
 
 	/* usk */
-	memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &suiteCnt, 2);
+	_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &suiteCnt, 2);
 	pWapiInfo->wapiIELength += 2;
-	memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
+	_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
 	pWapiInfo->wapiIELength += 3;
 	pWapiInfo->wapiIE[pWapiInfo->wapiIELength] = 0x1;
 	pWapiInfo->wapiIELength += 1;
 
 	/* msk */
-	memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
+	_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, OUI, 3);
 	pWapiInfo->wapiIELength += 3;
 	pWapiInfo->wapiIE[pWapiInfo->wapiIELength] = 0x1;
 	pWapiInfo->wapiIELength += 1;
 
 	/* Capbility */
-	memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &capability, 2);
+	_rtw_memcpy(pWapiInfo->wapiIE + pWapiInfo->wapiIELength, &capability, 2);
 	pWapiInfo->wapiIELength += 2;
 }
 
@@ -653,7 +653,7 @@ void rtw_wapi_on_assoc_ok(_adapter *padapter, PNDIS_802_11_VARIABLE_IEs pIE)
 	pWapiSta = (PRT_WAPI_STA_INFO)list_entry(pWapiInfo->wapiSTAIdleList.next, RT_WAPI_STA_INFO, list);
 	list_del_init(&pWapiSta->list);
 	list_add_tail(&pWapiSta->list, &pWapiInfo->wapiSTAUsedList);
-	_rtw_memcpy(pWapiSta->PeerMacAddr, padapter->mlmeextpriv.mlmext_info.network.MacAddress, 6);
+	_rtw_memcpy(pWapiSta->PeerMacAddr, padapter->mlmeextpriv.mlmext_info.dev_network.MacAddress, 6);
 	_rtw_memcpy(pWapiSta->lastRxMulticastPN, WapiAEMultiCastPNInitialValueSrc, 16);
 	_rtw_memcpy(pWapiSta->lastRxUnicastPN, WapiAEPNInitialValueSrc, 16);
 
@@ -683,7 +683,7 @@ void rtw_wapi_return_one_sta_info(_adapter *padapter, u8 *MacAddr)
 		return;
 	}
 
-	if (check_fwstate(pmlmepriv, WIFI_STATION_STATE)) {
+	if (MLME_IS_STA(padapter)) {
 		while (!list_empty(&(pWapiInfo->wapiBKIDStoreList))) {
 			pWapiBkid = (PRT_WAPI_BKID)list_entry(pWapiInfo->wapiBKIDStoreList.next, RT_WAPI_BKID, list);
 			list_del_init(&pWapiBkid->list);
@@ -748,7 +748,7 @@ void rtw_wapi_return_one_sta_info(_adapter *padapter, u8 *MacAddr)
 				pWapiStaInfo->PeerMacAddr[4], pWapiStaInfo->PeerMacAddr[5]);
 
 			list_del_init(&pWapiStaInfo->list);
-			memset(pWapiStaInfo->PeerMacAddr, 0, ETH_ALEN);
+			_rtw_memset(pWapiStaInfo->PeerMacAddr, 0, ETH_ALEN);
 			pWapiStaInfo->bSetkeyOk = 0;
 			list_add_tail(&pWapiStaInfo->list, &pWapiInfo->wapiSTAIdleList);
 		}
@@ -777,7 +777,7 @@ void rtw_wapi_return_all_sta_info(_adapter *padapter)
 	while (!list_empty(&(pWapiInfo->wapiSTAUsedList))) {
 		pWapiStaInfo = (PRT_WAPI_STA_INFO)list_entry(pWapiInfo->wapiSTAUsedList.next, RT_WAPI_STA_INFO, list);
 		list_del_init(&pWapiStaInfo->list);
-		memset(pWapiStaInfo->PeerMacAddr, 0, ETH_ALEN);
+		_rtw_memset(pWapiStaInfo->PeerMacAddr, 0, ETH_ALEN);
 		pWapiStaInfo->bSetkeyOk = 0;
 		list_add_tail(&pWapiStaInfo->list, &pWapiInfo->wapiSTAIdleList);
 	}
@@ -786,18 +786,18 @@ void rtw_wapi_return_all_sta_info(_adapter *padapter)
 	while (!list_empty(&(pWapiInfo->wapiBKIDStoreList))) {
 		pWapiBkid = (PRT_WAPI_BKID)list_entry(pWapiInfo->wapiBKIDStoreList.next, RT_WAPI_BKID, list);
 		list_del_init(&pWapiBkid->list);
-		memset(pWapiBkid->bkid, 0, 16);
+		_rtw_memset(pWapiBkid->bkid, 0, 16);
 		list_add_tail(&pWapiBkid->list, &pWapiInfo->wapiBKIDIdleList);
 	}
 	WAPI_TRACE(WAPI_API, "<========== %s\n", __FUNCTION__);
 }
 
 void CAM_empty_entry(
-	PADAPTER	Adapter,
+	_adapter *adapter,
 	u8			ucIndex
 )
 {
-	rtw_hal_set_hwreg(Adapter, HW_VAR_CAM_EMPTY_ENTRY, (u8 *)(&ucIndex));
+	rtw_hal_set_hwreg(adapter, HW_VAR_CAM_EMPTY_ENTRY, (u8 *)(&ucIndex));
 }
 
 void rtw_wapi_clear_cam_entry(_adapter *padapter, u8 *pMacAddr)
@@ -813,19 +813,19 @@ void rtw_wapi_clear_cam_entry(_adapter *padapter, u8 *pMacAddr)
 
 	UcIndex = WapiGetEntryForCamClear(padapter, pMacAddr, 0, 0);
 	if (UcIndex != 0xff) {
-		/* CAM_mark_invalid(Adapter, UcIndex); */
+		/* CAM_mark_invalid(adapter, UcIndex); */
 		CAM_empty_entry(padapter, UcIndex);
 	}
 
 	UcIndex = WapiGetEntryForCamClear(padapter, pMacAddr, 1, 0);
 	if (UcIndex != 0xff) {
-		/* CAM_mark_invalid(Adapter, UcIndex); */
+		/* CAM_mark_invalid(adapter, UcIndex); */
 		CAM_empty_entry(padapter, UcIndex);
 	}
 
 	UcIndex = WapiGetEntryForCamClear(padapter, pMacAddr, 0, 1);
 	if (UcIndex != 0xff) {
-		/* CAM_mark_invalid(Adapter, UcIndex); */
+		/* CAM_mark_invalid(adapter, UcIndex); */
 		CAM_empty_entry(padapter, UcIndex);
 	}
 
@@ -850,16 +850,18 @@ void rtw_wapi_clear_all_cam_entry(_adapter *padapter)
 	invalidate_cam_all(padapter); /* is this ok? */
 	WapiResetAllCamEntry(padapter);
 
-	WAPI_TRACE(WAPI_API, "===========> %s\n", __FUNCTION__);
+	WAPI_TRACE(WAPI_API, "<=========== %s\n", __FUNCTION__);
 }
 
-void rtw_wapi_set_key(_adapter *padapter, RT_WAPI_KEY *pWapiKey, RT_WAPI_STA_INFO *pWapiSta, u8 bGroupKey, u8 bUseDefaultKey)
+void rtw_wapi_set_key(_adapter *padapter, RT_WAPI_KEY *pWapiKey, RT_WAPI_STA_INFO *pWapiSta, u8 bGroupKey)
 {
+	struct setkey_parm *psetkeyparm;
+	struct set_stakey_parm *psetstakeyparm;
 	PRT_WAPI_T		pWapiInfo =  &padapter->wapiInfo;
-	u8				*pMacAddr = pWapiSta->PeerMacAddr;
+	u8			*pMacAddr = pWapiSta->PeerMacAddr;
 	u32 EntryId = 0;
 	BOOLEAN IsPairWise = false ;
-	u8 EncAlgo;
+	u8 keylen;
 
 	WAPI_TRACE(WAPI_API, "===========> %s\n", __FUNCTION__);
 
@@ -868,51 +870,43 @@ void rtw_wapi_set_key(_adapter *padapter, RT_WAPI_KEY *pWapiKey, RT_WAPI_STA_INF
 		return;
 	}
 
-	EncAlgo = _SMS4_;
-
-	/* For Tx bc/mc pkt,use defualt key entry */
-	if (bUseDefaultKey) {
-		/* when WAPI update key, keyid will be 0 or 1 by turns. */
-		if (pWapiKey->keyId == 0)
-			EntryId = 0;
-		else
-			EntryId = 2;
-	} else {
-		/* tx/rx unicast pkt, or rx broadcast, find the key entry by peer's MacAddr */
-		EntryId = WapiGetEntryForCamWrite(padapter, pMacAddr, pWapiKey->keyId, bGroupKey);
-	}
-
-	if (EntryId == 0xff) {
-		WAPI_TRACE(WAPI_API, "===>No entry for WAPI setkey! !!\n");
+	psetstakeyparm = (struct set_stakey_parm *)rtw_zmalloc(sizeof(struct set_stakey_parm));
+	if (NULL == psetstakeyparm) {
+		WAPI_TRACE(WAPI_API, "<========== new %s, could not zmalloc psetstakeyparm at line %d\n", __FUNCTION__, __LINE__);
 		return;
 	}
+	psetstakeyparm->algorithm = _SMS4_;
+	keylen = 16;
 
-	/* EntryId is also used to diff Sec key and Mic key */
-	/* Sec Key */
-	WapiWriteOneCamEntry(padapter,
-			     pMacAddr,
-			     pWapiKey->keyId, /* keyid */
-			     EntryId,	/* entry */
-			     EncAlgo, /* type */
-			     bGroupKey, /* pairwise or group key */
-			     pWapiKey->dataKey);
-	/* MIC key */
-	WapiWriteOneCamEntry(padapter,
-			     pMacAddr,
-			     pWapiKey->keyId, /* keyid */
-			     EntryId + 1,	/* entry */
-			     EncAlgo, /* type */
-			     bGroupKey, /* pairwise or group key */
-			     pWapiKey->micKey);
+	_rtw_memcpy(psetstakeyparm->addr, pMacAddr, ETH_ALEN);
+	_rtw_memcpy(&(psetstakeyparm->key[0]), &pWapiKey->dataKey, keylen);
+	_rtw_memcpy(&(psetstakeyparm->key[16]), &pWapiKey->micKey, keylen);
+	psetstakeyparm->keyid = pWapiKey->keyId;
 
+	if(bGroupKey) {
+		/* Group Key */
+		psetstakeyparm->gk = 1;
+		WAPI_TRACE(WAPI_API, "new %s: group keyid = %d, gk = %d, algorithm = %d\n", __FUNCTION__, psetstakeyparm->keyid, psetstakeyparm->gk, psetstakeyparm->algorithm);
+	} else {
+		/* Pairwise Key */
+		psetstakeyparm->gk = 0;
+		WAPI_TRACE(WAPI_API, "new %s: pairwise keyid = %d, gk = %d, algorithm = %d\n", __FUNCTION__, psetstakeyparm->keyid, psetstakeyparm->gk, psetstakeyparm->algorithm);
+	}
+
+	WAPI_DATA(WAPI_API, "new %s: ", psetstakeyparm->key, 32);
+#ifdef CONFIG_CMD_DISP
+	set_stakey_hdl(padapter, psetstakeyparm, PHL_CMD_DIRECTLY, 0);
+#else
+	set_stakey_hdl(padapter, (u8 *)psetstakeyparm);
+#endif
+	rtw_mfree((u8 *) psetstakeyparm, sizeof(struct setkey_parm));
 	WAPI_TRACE(WAPI_API, "Set Wapi Key :KeyId:%d,EntryId:%d,PairwiseKey:%d.\n", pWapiKey->keyId, EntryId, !bGroupKey);
-	WAPI_TRACE(WAPI_API, "===========> %s\n", __FUNCTION__);
-
+	WAPI_TRACE(WAPI_API, "<=========== %s\n", __FUNCTION__);
 }
 
 #if 0
 /* YJ,test,091013 */
-void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
+void wapi_test_set_key(_adapter *padapter, u8 *buf)
 {
 	/*Data: keyType(1) + bTxEnable(1) + bAuthenticator(1) + bUpdate(1) + PeerAddr(6) + DataKey(16) + MicKey(16) + KeyId(1)*/
 	PRT_WAPI_T			pWapiInfo = &padapter->wapiInfo;
@@ -936,29 +930,29 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 	bTxEnable = data[1];
 	bAuthenticator = data[2];
 	bUpdate = data[3];
-	memcpy(PeerAddr, data + 4, 6);
+	_rtw_memcpy(PeerAddr, data + 4, 6);
 
 	if (data[0] == 0x3) {
 		if (!list_empty(&(pWapiInfo->wapiBKIDIdleList))) {
 			pWapiBkid = (PRT_WAPI_BKID)list_entry(pWapiInfo->wapiBKIDIdleList.next, RT_WAPI_BKID, list);
 			list_del_init(&pWapiBkid->list);
-			memcpy(pWapiBkid->bkid, data + 10, 16);
+			_rtw_memcpy(pWapiBkid->bkid, data + 10, 16);
 			WAPI_DATA(WAPI_INIT, "SetKey - BKID", pWapiBkid->bkid, 16);
 			list_add_tail(&pWapiBkid->list, &pWapiInfo->wapiBKIDStoreList);
 		}
 	} else {
 		list_for_each_entry(pWapiSta, &pWapiInfo->wapiSTAUsedList, list) {
-			if (!memcmp(pWapiSta->PeerMacAddr, PeerAddr, 6)) {
+			if (_rtw_memcmp(pWapiSta->PeerMacAddr, PeerAddr, 6)) {
 				pWapiSta->bAuthenticatorInUpdata = false;
 				switch (data[0]) {
 				case 1:              /* usk */
 					if (bAuthenticator) {       /* authenticator */
-						memcpy(pWapiSta->lastTxUnicastPN, WapiAEPNInitialValueSrc, 16);
+						_rtw_memcpy(pWapiSta->lastTxUnicastPN, WapiAEPNInitialValueSrc, 16);
 						if (!bUpdate) {    /* first */
 							WAPI_TRACE(WAPI_INIT, "AE fisrt set usk\n");
 							pWapiSta->wapiUsk.bSet = true;
-							memcpy(pWapiSta->wapiUsk.dataKey, data + 10, 16);
-							memcpy(pWapiSta->wapiUsk.micKey, data + 26, 16);
+							_rtw_memcpy(pWapiSta->wapiUsk.dataKey, data + 10, 16);
+							_rtw_memcpy(pWapiSta->wapiUsk.micKey, data + 26, 16);
 							pWapiSta->wapiUsk.keyId = *(data + 42);
 							pWapiSta->wapiUsk.bTxEnable = true;
 							WAPI_DATA(WAPI_INIT, "SetKey - AE USK Data Key", pWapiSta->wapiUsk.dataKey, 16);
@@ -967,13 +961,13 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 							WAPI_TRACE(WAPI_INIT, "AE update usk\n");
 							pWapiSta->wapiUskUpdate.bSet = true;
 							pWapiSta->bAuthenticatorInUpdata = true;
-							memcpy(pWapiSta->wapiUskUpdate.dataKey, data + 10, 16);
-							memcpy(pWapiSta->wapiUskUpdate.micKey, data + 26, 16);
-							memcpy(pWapiSta->lastRxUnicastPNBEQueue, WapiASUEPNInitialValueSrc, 16);
-							memcpy(pWapiSta->lastRxUnicastPNBKQueue, WapiASUEPNInitialValueSrc, 16);
-							memcpy(pWapiSta->lastRxUnicastPNVIQueue, WapiASUEPNInitialValueSrc, 16);
-							memcpy(pWapiSta->lastRxUnicastPNVOQueue, WapiASUEPNInitialValueSrc, 16);
-							memcpy(pWapiSta->lastRxUnicastPN, WapiASUEPNInitialValueSrc, 16);
+							_rtw_memcpy(pWapiSta->wapiUskUpdate.dataKey, data + 10, 16);
+							_rtw_memcpy(pWapiSta->wapiUskUpdate.micKey, data + 26, 16);
+							_rtw_memcpy(pWapiSta->lastRxUnicastPNBEQueue, WapiASUEPNInitialValueSrc, 16);
+							_rtw_memcpy(pWapiSta->lastRxUnicastPNBKQueue, WapiASUEPNInitialValueSrc, 16);
+							_rtw_memcpy(pWapiSta->lastRxUnicastPNVIQueue, WapiASUEPNInitialValueSrc, 16);
+							_rtw_memcpy(pWapiSta->lastRxUnicastPNVOQueue, WapiASUEPNInitialValueSrc, 16);
+							_rtw_memcpy(pWapiSta->lastRxUnicastPN, WapiASUEPNInitialValueSrc, 16);
 							pWapiSta->wapiUskUpdate.keyId = *(data + 42);
 							pWapiSta->wapiUskUpdate.bTxEnable = true;
 						}
@@ -982,11 +976,11 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 							WAPI_TRACE(WAPI_INIT, "ASUE fisrt set usk\n");
 							if (bTxEnable) {
 								pWapiSta->wapiUsk.bTxEnable = true;
-								memcpy(pWapiSta->lastTxUnicastPN, WapiASUEPNInitialValueSrc, 16);
+								_rtw_memcpy(pWapiSta->lastTxUnicastPN, WapiASUEPNInitialValueSrc, 16);
 							} else {
 								pWapiSta->wapiUsk.bSet = true;
-								memcpy(pWapiSta->wapiUsk.dataKey, data + 10, 16);
-								memcpy(pWapiSta->wapiUsk.micKey, data + 26, 16);
+								_rtw_memcpy(pWapiSta->wapiUsk.dataKey, data + 10, 16);
+								_rtw_memcpy(pWapiSta->wapiUsk.micKey, data + 26, 16);
 								pWapiSta->wapiUsk.keyId = *(data + 42);
 								pWapiSta->wapiUsk.bTxEnable = false;
 							}
@@ -995,22 +989,22 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 							if (bTxEnable) {
 								pWapiSta->wapiUskUpdate.bTxEnable = true;
 								if (pWapiSta->wapiUskUpdate.bSet) {
-									memcpy(pWapiSta->wapiUsk.dataKey, pWapiSta->wapiUskUpdate.dataKey, 16);
-									memcpy(pWapiSta->wapiUsk.micKey, pWapiSta->wapiUskUpdate.micKey, 16);
+									_rtw_memcpy(pWapiSta->wapiUsk.dataKey, pWapiSta->wapiUskUpdate.dataKey, 16);
+									_rtw_memcpy(pWapiSta->wapiUsk.micKey, pWapiSta->wapiUskUpdate.micKey, 16);
 									pWapiSta->wapiUsk.keyId = pWapiSta->wapiUskUpdate.keyId;
-									memcpy(pWapiSta->lastRxUnicastPNBEQueue, WapiASUEPNInitialValueSrc, 16);
-									memcpy(pWapiSta->lastRxUnicastPNBKQueue, WapiASUEPNInitialValueSrc, 16);
-									memcpy(pWapiSta->lastRxUnicastPNVIQueue, WapiASUEPNInitialValueSrc, 16);
-									memcpy(pWapiSta->lastRxUnicastPNVOQueue, WapiASUEPNInitialValueSrc, 16);
-									memcpy(pWapiSta->lastRxUnicastPN, WapiASUEPNInitialValueSrc, 16);
+									_rtw_memcpy(pWapiSta->lastRxUnicastPNBEQueue, WapiASUEPNInitialValueSrc, 16);
+									_rtw_memcpy(pWapiSta->lastRxUnicastPNBKQueue, WapiASUEPNInitialValueSrc, 16);
+									_rtw_memcpy(pWapiSta->lastRxUnicastPNVIQueue, WapiASUEPNInitialValueSrc, 16);
+									_rtw_memcpy(pWapiSta->lastRxUnicastPNVOQueue, WapiASUEPNInitialValueSrc, 16);
+									_rtw_memcpy(pWapiSta->lastRxUnicastPN, WapiASUEPNInitialValueSrc, 16);
 									pWapiSta->wapiUskUpdate.bTxEnable = false;
 									pWapiSta->wapiUskUpdate.bSet = false;
 								}
-								memcpy(pWapiSta->lastTxUnicastPN, WapiASUEPNInitialValueSrc, 16);
+								_rtw_memcpy(pWapiSta->lastTxUnicastPN, WapiASUEPNInitialValueSrc, 16);
 							} else {
 								pWapiSta->wapiUskUpdate.bSet = true;
-								memcpy(pWapiSta->wapiUskUpdate.dataKey, data + 10, 16);
-								memcpy(pWapiSta->wapiUskUpdate.micKey, data + 26, 16);
+								_rtw_memcpy(pWapiSta->wapiUskUpdate.dataKey, data + 10, 16);
+								_rtw_memcpy(pWapiSta->wapiUskUpdate.micKey, data + 26, 16);
 								pWapiSta->wapiUskUpdate.keyId = *(data + 42);
 								pWapiSta->wapiUskUpdate.bTxEnable = false;
 							}
@@ -1020,11 +1014,11 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 				case 2:		/* msk */
 					if (bAuthenticator) {        /* authenticator */
 						pWapiInfo->wapiTxMsk.bSet = true;
-						memcpy(pWapiInfo->wapiTxMsk.dataKey, data + 10, 16);
-						memcpy(pWapiInfo->wapiTxMsk.micKey, data + 26, 16);
+						_rtw_memcpy(pWapiInfo->wapiTxMsk.dataKey, data + 10, 16);
+						_rtw_memcpy(pWapiInfo->wapiTxMsk.micKey, data + 26, 16);
 						pWapiInfo->wapiTxMsk.keyId = *(data + 42);
 						pWapiInfo->wapiTxMsk.bTxEnable = true;
-						memcpy(pWapiInfo->lastTxMulticastPN, WapiAEMultiCastPNInitialValueSrc, 16);
+						_rtw_memcpy(pWapiInfo->lastTxMulticastPN, WapiAEMultiCastPNInitialValueSrc, 16);
 
 						if (!bUpdate) {    /* first */
 							WAPI_TRACE(WAPI_INIT, "AE fisrt set msk\n");
@@ -1040,8 +1034,8 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 						if (!bUpdate) {
 							WAPI_TRACE(WAPI_INIT, "ASUE fisrt set msk\n");
 							pWapiSta->wapiMsk.bSet = true;
-							memcpy(pWapiSta->wapiMsk.dataKey, data + 10, 16);
-							memcpy(pWapiSta->wapiMsk.micKey, data + 26, 16);
+							_rtw_memcpy(pWapiSta->wapiMsk.dataKey, data + 10, 16);
+							_rtw_memcpy(pWapiSta->wapiMsk.micKey, data + 26, 16);
 							pWapiSta->wapiMsk.keyId = *(data + 42);
 							pWapiSta->wapiMsk.bTxEnable = false;
 							if (!pWapiSta->bSetkeyOk)
@@ -1052,8 +1046,8 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 						} else {
 							WAPI_TRACE(WAPI_INIT, "ASUE update msk\n");
 							pWapiSta->wapiMskUpdate.bSet = true;
-							memcpy(pWapiSta->wapiMskUpdate.dataKey, data + 10, 16);
-							memcpy(pWapiSta->wapiMskUpdate.micKey, data + 26, 16);
+							_rtw_memcpy(pWapiSta->wapiMskUpdate.dataKey, data + 10, 16);
+							_rtw_memcpy(pWapiSta->wapiMskUpdate.micKey, data + 26, 16);
 							pWapiSta->wapiMskUpdate.keyId = *(data + 42);
 							pWapiSta->wapiMskUpdate.bTxEnable = false;
 						}
@@ -1070,7 +1064,7 @@ void wapi_test_set_key(struct _adapter *padapter, u8 *buf)
 }
 
 
-void wapi_test_init(struct _adapter *padapter)
+void wapi_test_init(_adapter *padapter)
 {
 	u8 keybuf[100];
 	u8 mac_addr[ETH_ALEN] = {0x00, 0xe0, 0x4c, 0x72, 0x04, 0x70};
@@ -1093,51 +1087,51 @@ void wapi_test_init(struct _adapter *padapter)
 
 	/* set usk */
 	WAPI_TRACE(WAPI_INIT, "%s: Set USK!!!!\n", __FUNCTION__);
-	memset(keybuf, 0, 100);
+	_rtw_memset(keybuf, 0, 100);
 	keybuf[0] = 1;                           /* set usk */
 	keybuf[1] = 1; 				/* enable tx */
 	keybuf[2] = 1; 				/* AE */
 	keybuf[3] = 0; 				/* not update */
 
-	memcpy(keybuf + 4, mac_addr, ETH_ALEN);
-	memcpy(keybuf + 10, UskDataKey, 16);
-	memcpy(keybuf + 26, UskMicKey, 16);
+	_rtw_memcpy(keybuf + 4, mac_addr, ETH_ALEN);
+	_rtw_memcpy(keybuf + 10, UskDataKey, 16);
+	_rtw_memcpy(keybuf + 26, UskMicKey, 16);
 	keybuf[42] = UskId;
 	wapi_test_set_key(padapter, keybuf);
 
-	memset(keybuf, 0, 100);
+	_rtw_memset(keybuf, 0, 100);
 	keybuf[0] = 1;                           /* set usk */
 	keybuf[1] = 1; 				/* enable tx */
 	keybuf[2] = 0; 				/* AE */
 	keybuf[3] = 0; 				/* not update */
 
-	memcpy(keybuf + 4, mac_addr, ETH_ALEN);
-	memcpy(keybuf + 10, UskDataKey, 16);
-	memcpy(keybuf + 26, UskMicKey, 16);
+	_rtw_memcpy(keybuf + 4, mac_addr, ETH_ALEN);
+	_rtw_memcpy(keybuf + 10, UskDataKey, 16);
+	_rtw_memcpy(keybuf + 26, UskMicKey, 16);
 	keybuf[42] = UskId;
 	wapi_test_set_key(padapter, keybuf);
 
 	/* set msk */
 	WAPI_TRACE(WAPI_INIT, "%s: Set MSK!!!!\n", __FUNCTION__);
-	memset(keybuf, 0, 100);
+	_rtw_memset(keybuf, 0, 100);
 	keybuf[0] = 2;                                /* set msk */
 	keybuf[1] = 1;                               /* Enable TX */
 	keybuf[2] = 1; 				/* AE */
 	keybuf[3] = 0;                              /* not update */
-	memcpy(keybuf + 4, mac_addr, ETH_ALEN);
-	memcpy(keybuf + 10, MskDataKey, 16);
-	memcpy(keybuf + 26, MskMicKey, 16);
+	_rtw_memcpy(keybuf + 4, mac_addr, ETH_ALEN);
+	_rtw_memcpy(keybuf + 10, MskDataKey, 16);
+	_rtw_memcpy(keybuf + 26, MskMicKey, 16);
 	keybuf[42] = MskId;
 	wapi_test_set_key(padapter, keybuf);
 
-	memset(keybuf, 0, 100);
+	_rtw_memset(keybuf, 0, 100);
 	keybuf[0] = 2;                                /* set msk */
 	keybuf[1] = 1;                               /* Enable TX */
 	keybuf[2] = 0; 				/* AE */
 	keybuf[3] = 0;                              /* not update */
-	memcpy(keybuf + 4, mac_addr, ETH_ALEN);
-	memcpy(keybuf + 10, MskDataKey, 16);
-	memcpy(keybuf + 26, MskMicKey, 16);
+	_rtw_memcpy(keybuf + 4, mac_addr, ETH_ALEN);
+	_rtw_memcpy(keybuf + 10, MskDataKey, 16);
+	_rtw_memcpy(keybuf + 26, MskMicKey, 16);
 	keybuf[42] = MskId;
 	wapi_test_set_key(padapter, keybuf);
 	WAPI_TRACE(WAPI_INIT, "<===========%s\n", __FUNCTION__);
@@ -1166,7 +1160,7 @@ void rtw_wapi_get_iv(_adapter *padapter, u8 *pRA, u8 *IV)
 			pWapiExt->KeyIdx = pWapiInfo->wapiTxMsk.keyId;
 			pWapiExt->Reserved = 0;
 			bPNOverflow = WapiIncreasePN(pWapiInfo->lastTxMulticastPN, 1);
-			memcpy(pWapiExt->PN, pWapiInfo->lastTxMulticastPN, 16);
+			_rtw_memcpy(pWapiExt->PN, pWapiInfo->lastTxMulticastPN, 16);
 		}
 	} else {
 		if (list_empty(&pWapiInfo->wapiSTAUsedList)) {
@@ -1263,6 +1257,9 @@ bool rtw_wapi_drop_for_key_absent(_adapter *padapter, u8 *pRA)
 void rtw_wapi_set_set_encryption(_adapter *padapter, struct ieee_param *param)
 {
 	struct security_priv *psecuritypriv = &padapter->securitypriv;
+	/* ToDo CONFIG_RTW_MLD: [currently primary link only] */
+	struct ADAPTER_LINK *padapter_link = GET_PRIMARY_LINK(padapter);
+	struct link_security_priv *lsecuritypriv = &padapter_link->securitypriv;
 	struct mlme_priv	*pmlmepriv = &padapter->mlmepriv;
 	PRT_WAPI_T			pWapiInfo = &padapter->wapiInfo;
 	PRT_WAPI_STA_INFO	pWapiSta;
@@ -1278,7 +1275,8 @@ void rtw_wapi_set_set_encryption(_adapter *padapter, struct ieee_param *param)
 				pWapiSta->wapiUsk.bSet = true;
 				_rtw_memcpy(pWapiSta->wapiUsk.dataKey, param->u.crypt.key, 16);
 				_rtw_memcpy(pWapiSta->wapiUsk.micKey, param->u.crypt.key + 16, 16);
-				pWapiSta->wapiUsk.keyId = param->u.crypt.idx ;
+				pWapiSta->wapiUsk.keyId = param->u.crypt.idx;
+				psecuritypriv->dot11PrivacyKeyIndex = param->u.crypt.idx;
 				pWapiSta->wapiUsk.bTxEnable = true;
 
 				_rtw_memcpy(pWapiSta->lastRxUnicastPNBEQueue, WapiAEPNInitialValueSrc, 16);
@@ -1291,7 +1289,7 @@ void rtw_wapi_set_set_encryption(_adapter *padapter, struct ieee_param *param)
 
 				if (psecuritypriv->sw_encrypt == false || psecuritypriv->sw_decrypt == false) {
 					/* set unicast key for ASUE */
-					rtw_wapi_set_key(padapter, &pWapiSta->wapiUsk, pWapiSta, false, false);
+					rtw_wapi_set_key(padapter, &pWapiSta->wapiUsk, pWapiSta, false);
 				}
 			}
 		}
@@ -1301,7 +1299,8 @@ void rtw_wapi_set_set_encryption(_adapter *padapter, struct ieee_param *param)
 				pWapiSta->wapiMsk.bSet = true;
 				_rtw_memcpy(pWapiSta->wapiMsk.dataKey, param->u.crypt.key, 16);
 				_rtw_memcpy(pWapiSta->wapiMsk.micKey, param->u.crypt.key + 16, 16);
-				pWapiSta->wapiMsk.keyId = param->u.crypt.idx ;
+				pWapiSta->wapiMsk.keyId = param->u.crypt.idx;
+				lsecuritypriv->dot118021XGrpKeyid = param->u.crypt.idx;
 				pWapiSta->wapiMsk.bTxEnable = false;
 				if (!pWapiSta->bSetkeyOk)
 					pWapiSta->bSetkeyOk = true;
@@ -1311,7 +1310,7 @@ void rtw_wapi_set_set_encryption(_adapter *padapter, struct ieee_param *param)
 
 				if (psecuritypriv->sw_decrypt == false) {
 					/* set rx broadcast key for ASUE */
-					rtw_wapi_set_key(padapter, &pWapiSta->wapiMsk, pWapiSta, true, false);
+					rtw_wapi_set_key(padapter, &pWapiSta->wapiMsk, pWapiSta, true);
 				}
 			}
 		}

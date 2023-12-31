@@ -17,7 +17,38 @@
 #ifdef CONFIG_WIFI_MONITOR
 
 #include <drv_types.h>
-#include <hal_data.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+#include <linux/bitfield.h>
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
+#define __bf_shf(x) (__builtin_ffsll(x) - 1)
+
+/**
+ * FIELD_PREP() - prepare a bitfield element
+ * @_mask: shifted mask defining the field's length and position
+ * @_val:  value to put in the field
+ *
+ * FIELD_PREP() masks and shifts up the value.  The result should
+ * be combined with other fields of the bitfield using logical OR.
+ */
+#define FIELD_PREP(_mask, _val)						\
+	({								\
+		((typeof(_mask))(_val) << __bf_shf(_mask)) & (_mask);	\
+	})
+#endif
+
+#define __encode_bits(w, v, field) FIELD_PREP((u##w)(field), v)
+#define __u16_encode_bits(v, field)	__encode_bits(16, v, field)
+#define __le16_encode_bits(v, field)	cpu_to_le16(__encode_bits(16, v, field))
+#define __be16_encode_bits(v, field)	cpu_to_be16(__encode_bits(16, v, field))
+#define __u32_encode_bits(v, field)	__encode_bits(32, v, field)
+#define __le32_encode_bits(v, field)	cpu_to_le32(__encode_bits(32, v, field))
+#define __be32_encode_bits(v, field)	cpu_to_be32(__encode_bits(32, v, field))
+#define __u64_encode_bits(v, field)	__encode_bits(64, v, field)
+#define __le64_encode_bits(v, field)	cpu_to_le64(__encode_bits(64, v, field))
+#define __be64_encode_bits(v, field)	cpu_to_be64(__encode_bits(64, v, field))
+
 
 #define CHAN2FREQ(a) ((a < 14) ? (2407+5*a) : (5000+5*a))
 
@@ -51,6 +82,99 @@
 #define	IEEE80211_CHAN_STURBO	0x2000	/* Static Turbo */
 #define	IEEE80211_CHAN_HALF	0x4000	/* Half channel (10 MHz wide) */
 #define	IEEE80211_CHAN_QUARTER	0x8000	/* Quarter channel (5 MHz wide) */
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+#define IEEE80211_RADIOTAP_HE 23
+
+struct ieee80211_radiotap_he {
+	u16 data1, data2, data3, data4, data5, data6;
+};
+
+enum ieee80211_radiotap_he_bits {
+	IEEE80211_RADIOTAP_HE_DATA1_FORMAT_MASK		= 3,
+	IEEE80211_RADIOTAP_HE_DATA1_FORMAT_SU		= 0,
+	IEEE80211_RADIOTAP_HE_DATA1_FORMAT_EXT_SU	= 1,
+	IEEE80211_RADIOTAP_HE_DATA1_FORMAT_MU		= 2,
+	IEEE80211_RADIOTAP_HE_DATA1_FORMAT_TRIG		= 3,
+
+	IEEE80211_RADIOTAP_HE_DATA1_BSS_COLOR_KNOWN	= 0x0004,
+	IEEE80211_RADIOTAP_HE_DATA1_BEAM_CHANGE_KNOWN	= 0x0008,
+	IEEE80211_RADIOTAP_HE_DATA1_UL_DL_KNOWN		= 0x0010,
+	IEEE80211_RADIOTAP_HE_DATA1_DATA_MCS_KNOWN	= 0x0020,
+	IEEE80211_RADIOTAP_HE_DATA1_DATA_DCM_KNOWN	= 0x0040,
+	IEEE80211_RADIOTAP_HE_DATA1_CODING_KNOWN	= 0x0080,
+	IEEE80211_RADIOTAP_HE_DATA1_LDPC_XSYMSEG_KNOWN	= 0x0100,
+	IEEE80211_RADIOTAP_HE_DATA1_STBC_KNOWN		= 0x0200,
+	IEEE80211_RADIOTAP_HE_DATA1_SPTL_REUSE_KNOWN	= 0x0400,
+	IEEE80211_RADIOTAP_HE_DATA1_SPTL_REUSE2_KNOWN	= 0x0800,
+	IEEE80211_RADIOTAP_HE_DATA1_SPTL_REUSE3_KNOWN	= 0x1000,
+	IEEE80211_RADIOTAP_HE_DATA1_SPTL_REUSE4_KNOWN	= 0x2000,
+	IEEE80211_RADIOTAP_HE_DATA1_BW_RU_ALLOC_KNOWN	= 0x4000,
+	IEEE80211_RADIOTAP_HE_DATA1_DOPPLER_KNOWN	= 0x8000,
+
+	IEEE80211_RADIOTAP_HE_DATA2_PRISEC_80_KNOWN	= 0x0001,
+	IEEE80211_RADIOTAP_HE_DATA2_GI_KNOWN		= 0x0002,
+	IEEE80211_RADIOTAP_HE_DATA2_NUM_LTF_SYMS_KNOWN	= 0x0004,
+	IEEE80211_RADIOTAP_HE_DATA2_PRE_FEC_PAD_KNOWN	= 0x0008,
+	IEEE80211_RADIOTAP_HE_DATA2_TXBF_KNOWN		= 0x0010,
+	IEEE80211_RADIOTAP_HE_DATA2_PE_DISAMBIG_KNOWN	= 0x0020,
+	IEEE80211_RADIOTAP_HE_DATA2_TXOP_KNOWN		= 0x0040,
+	IEEE80211_RADIOTAP_HE_DATA2_MIDAMBLE_KNOWN	= 0x0080,
+	IEEE80211_RADIOTAP_HE_DATA2_RU_OFFSET		= 0x3f00,
+	IEEE80211_RADIOTAP_HE_DATA2_RU_OFFSET_KNOWN	= 0x4000,
+	IEEE80211_RADIOTAP_HE_DATA2_PRISEC_80_SEC	= 0x8000,
+
+	IEEE80211_RADIOTAP_HE_DATA3_BSS_COLOR		= 0x003f,
+	IEEE80211_RADIOTAP_HE_DATA3_BEAM_CHANGE		= 0x0040,
+	IEEE80211_RADIOTAP_HE_DATA3_UL_DL		= 0x0080,
+	IEEE80211_RADIOTAP_HE_DATA3_DATA_MCS		= 0x0f00,
+	IEEE80211_RADIOTAP_HE_DATA3_DATA_DCM		= 0x1000,
+	IEEE80211_RADIOTAP_HE_DATA3_CODING		= 0x2000,
+	IEEE80211_RADIOTAP_HE_DATA3_LDPC_XSYMSEG	= 0x4000,
+	IEEE80211_RADIOTAP_HE_DATA3_STBC		= 0x8000,
+
+	IEEE80211_RADIOTAP_HE_DATA4_SU_MU_SPTL_REUSE	= 0x000f,
+	IEEE80211_RADIOTAP_HE_DATA4_MU_STA_ID		= 0x7ff0,
+	IEEE80211_RADIOTAP_HE_DATA4_TB_SPTL_REUSE1	= 0x000f,
+	IEEE80211_RADIOTAP_HE_DATA4_TB_SPTL_REUSE2	= 0x00f0,
+	IEEE80211_RADIOTAP_HE_DATA4_TB_SPTL_REUSE3	= 0x0f00,
+	IEEE80211_RADIOTAP_HE_DATA4_TB_SPTL_REUSE4	= 0xf000,
+
+	IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC	= 0x000f,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_20MHZ	= 0,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_40MHZ	= 1,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_80MHZ	= 2,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_160MHZ	= 3,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_26T	= 4,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_52T	= 5,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_106T	= 6,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_242T	= 7,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_484T	= 8,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_996T	= 9,
+		IEEE80211_RADIOTAP_HE_DATA5_DATA_BW_RU_ALLOC_2x996T	= 10,
+
+	IEEE80211_RADIOTAP_HE_DATA5_GI			= 0x0030,
+		IEEE80211_RADIOTAP_HE_DATA5_GI_0_8			= 0,
+		IEEE80211_RADIOTAP_HE_DATA5_GI_1_6			= 1,
+		IEEE80211_RADIOTAP_HE_DATA5_GI_3_2			= 2,
+
+	IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE		= 0x00c0,
+		IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_UNKNOWN		= 0,
+		IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_1X			= 1,
+		IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_2X			= 2,
+		IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_4X			= 3,
+	IEEE80211_RADIOTAP_HE_DATA5_NUM_LTF_SYMS	= 0x0700,
+	IEEE80211_RADIOTAP_HE_DATA5_PRE_FEC_PAD		= 0x3000,
+	IEEE80211_RADIOTAP_HE_DATA5_TXBF		= 0x4000,
+	IEEE80211_RADIOTAP_HE_DATA5_PE_DISAMBIG		= 0x8000,
+
+	IEEE80211_RADIOTAP_HE_DATA6_NSTS		= 0x000f,
+	IEEE80211_RADIOTAP_HE_DATA6_DOPPLER		= 0x0010,
+	IEEE80211_RADIOTAP_HE_DATA6_TXOP		= 0x7f00,
+	IEEE80211_RADIOTAP_HE_DATA6_MIDAMBLE_PDCTY	= 0x8000,
+};
+
 #endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
@@ -161,7 +285,8 @@ static inline void _rtw_radiotap_fill_flags(struct rx_pkt_attrib *a, u8 *flags)
 
 }
 
-sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
+sint rtw_fill_radiotap_hdr(_adapter *padapter, struct _ADAPTER_LINK *padapter_link,
+		struct rx_pkt_attrib *a, struct rtw_recv_pkt *rx_req, u8 *buf)
 {
 #define RTAP_HDR_MAX 64
 
@@ -170,20 +295,18 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 
 	u8 rx_cnt = 0;
 
-	HAL_DATA_TYPE *pHalData = GET_HAL_DATA(padapter);
-
 	int i = 0;
 	u8 tmp_8bit = 0;
 	u16 tmp_16bit = 0;
 	u32 tmp_32bit = 0;
 	u64 tmp_64bit = 0;
 
-	_pkt *pskb = NULL;
+	struct sk_buff *pskb = NULL;
 
 	struct ieee80211_radiotap_header *rtap_hdr = NULL;
 	u8 *ptr = NULL;
 
-	/* 
+	/*
 	  radiotap length (include header 8)
 	  11G length: 36 (0x0040002f)
 	  11N length:
@@ -197,7 +320,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 	rtap_hdr->it_version = PKTHDR_RADIOTAP_VERSION;
 
 	/* each antenna information */
-	rx_cnt = rf_type_to_rf_rx_cnt(pHalData->rf_type);
+	rx_cnt = GET_HAL_RFPATH_NUM(padapter->dvobj);
 #if 0
 	if (rx_cnt > 1) {
 		rtap_hdr->it_present |= BIT(IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE) |
@@ -228,7 +351,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 		if (!IS_ALIGNED(rt_len, 8))
 			rt_len = ((rt_len + 7) & 0xFFF8); /* Alignment */
 
-		tmp_64bit = cpu_to_le64(a->free_cnt);
+		tmp_64bit = cpu_to_le64(rx_req->mdata.freerun_cnt);
 		_rtw_memcpy(&hdr_buf[rt_len], &tmp_64bit, 8);
 		rt_len += 8;
 	}
@@ -239,9 +362,9 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 	rt_len += 1;
 
 	/* rate */
-	if (a->data_rate <= DESC_RATE54M) {
+	if (rx_req->mdata.rx_rate <= RTW_DATA_RATE_OFDM54) {
 		rtap_hdr->it_present |= BIT(IEEE80211_RADIOTAP_RATE);
-		hdr_buf[rt_len] = hw_rate_to_m_rate(a->data_rate);
+		hdr_buf[rt_len] = hwrate_to_mrate(rx_req->mdata.rx_rate);
 		rt_len += 1;
 	}
 
@@ -250,18 +373,18 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 		rtap_hdr->it_present |= BIT(IEEE80211_RADIOTAP_CHANNEL);
 		rt_len += (rt_len % 2); /* Alignment */
 
-		tmp_16bit = CHAN2FREQ(rtw_get_oper_ch(padapter));
+		tmp_16bit = CHAN2FREQ(rtw_get_oper_ch(padapter, padapter_link));
 		_rtw_memcpy(&hdr_buf[rt_len], &tmp_16bit, 2);
 		rt_len += 2;
 
 		/* channel flags */
 		tmp_16bit = 0;
-		if (pHalData->current_band_type == 0)
+		if (WIFI_ROLE_LINK_IS_ON_24G(padapter_link))
 			tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_2GHZ);
 		else
 			tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_5GHZ);
 
-		if (a->data_rate <= DESC_RATE11M) {
+		if (rx_req->mdata.rx_rate <= RTW_DATA_RATE_CCK11) {
 			/* CCK */
 			tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_CCK);
 		} else {
@@ -269,12 +392,12 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 			tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_OFDM);
 		}
 
-		if (rtw_get_oper_bw(padapter) == CHANNEL_WIDTH_10) {
+		if (rtw_get_oper_bw(padapter, padapter_link) == CHANNEL_WIDTH_10) {
 			/* 10Mhz Channel Width */
 			tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_HALF);
 		}
 
-		if (rtw_get_oper_bw(padapter) == CHANNEL_WIDTH_5) {
+		if (rtw_get_oper_bw(padapter, padapter_link) == CHANNEL_WIDTH_5) {
 			/* 5Mhz Channel Width */
 			tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_QUARTER);
 		}
@@ -318,7 +441,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 #endif
 
 	/* MCS information, Required Alignment: 1 bytes */
-	if (a->data_rate >= DESC_RATEMCS0 && a->data_rate <= DESC_RATEMCS31) {
+	if (rx_req->mdata.rx_rate >= RTW_DATA_RATE_MCS0 && rx_req->mdata.rx_rate <= RTW_DATA_RATE_MCS31) {
 		rtap_hdr->it_present |= BIT(IEEE80211_RADIOTAP_MCS);
 		/* Structure u8 known, u8 flags, u8 mcs */
 
@@ -326,7 +449,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_MCS_HAVE_BW;
 		if (moif->u.snif_info.ofdm_bw)
 			hdr_buf[rt_len + 1] |= IEEE80211_RADIOTAP_MCS_BW_40;
-		if (a->bw == CHANNEL_WIDTH_40)
+		if (rx_req->mdata.bw == CHANNEL_WIDTH_40)
 			hdr_buf[rt_len + 1] |= IEEE80211_RADIOTAP_MCS_BW_40;
 		else
 			hdr_buf[rt_len + 1] |= IEEE80211_RADIOTAP_MCS_BW_20;
@@ -360,13 +483,13 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_MCS_HAVE_MCS;
 
 		/* u8 mcs */
-		hdr_buf[rt_len + 2] = a->data_rate - DESC_RATEMCS0;
+		hdr_buf[rt_len + 2] = rx_req->mdata.rx_rate - RTW_DATA_RATE_MCS0;
 
 		rt_len += 3;
 	}
 
 	/* AMPDU, Required Alignment: 4 bytes */
-	if (a->ampdu) {
+	if (rx_req->mdata.ampdu) {
 		static u32 ref_num = 0x10000000;
 		static u8 ppdu_cnt = 0;
 
@@ -376,8 +499,8 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 			rt_len = ((rt_len + 3) & 0xFFFC); /* Alignment */
 
 		/* u32 reference number */
-		if (a->ppdu_cnt != ppdu_cnt) {
-			ppdu_cnt = a->ppdu_cnt;
+		if (rx_req->mdata.ppdu_cnt != ppdu_cnt) {
+			ppdu_cnt = rx_req->mdata.ppdu_cnt;
 			ref_num += 1;
 		}
 		tmp_32bit = cpu_to_le32(ref_num);
@@ -401,7 +524,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 			tmp_16bit |= cpu_to_le16(IEEE80211_RADIOTAP_AMPDU_DELIM_CRC_KNOWN);
 		}
 
-		if (a->ampdu_eof) {
+		if (rx_req->mdata.ampdu_end_pkt) {
 			tmp_16bit |= cpu_to_le16(IEEE80211_RADIOTAP_AMPDU_EOF_KNOWN);
 			tmp_16bit |= cpu_to_le16(IEEE80211_RADIOTAP_AMPDU_EOF);
 		}
@@ -414,7 +537,8 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 	}
 
 	/* VHT, Required Alignment: 2 bytes */
-	if (a->data_rate >= DESC_RATEVHTSS1MCS0 && a->data_rate <= DESC_RATEVHTSS4MCS9) {
+	if (rx_req->mdata.rx_rate >= RTW_DATA_RATE_VHT_NSS1_MCS0 && rx_req->mdata.rx_rate <= RTW_DATA_RATE_VHT_NSS4_MCS9) {
+
 		rtap_hdr->it_present |= BIT(IEEE80211_RADIOTAP_VHT);
 
 		rt_len += (rt_len % 2); /* Alignment */
@@ -484,7 +608,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 		if (moif->u.snif_info.ofdm_bw)
 			tmp_8bit = moif->u.snif_info.ofdm_bw;
 		else
-			tmp_8bit = a->bw;
+			tmp_8bit = rx_req->mdata.bw;
 
 		switch (tmp_8bit) {
 		case CHANNEL_WIDTH_20:
@@ -505,13 +629,13 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 		rt_len += 1;
 
 		/* u8 mcs_nss[4] */
-		if ((DESC_RATEVHTSS1MCS0 <= a->data_rate) &&
-			(a->data_rate <= DESC_RATEVHTSS4MCS9)) {
+		if ((RTW_DATA_RATE_VHT_NSS1_MCS0 <= rx_req->mdata.rx_rate) &&
+			(rx_req->mdata.rx_rate <= RTW_DATA_RATE_VHT_NSS4_MCS9)) {
 			/* User 0 */
 			/* MCS */
-			hdr_buf[rt_len] = ((a->data_rate - DESC_RATEVHTSS1MCS0) % 10) << 4;
+			hdr_buf[rt_len] = cpu_to_le16 (((rx_req->mdata.rx_rate - RTW_DATA_RATE_VHT_NSS1_MCS0) % 10) << 4);
 			/* NSS */
-			hdr_buf[rt_len] |= (((a->data_rate - DESC_RATEVHTSS1MCS0) / 10) + 1);
+			hdr_buf[rt_len] |= cpu_to_le16((((rx_req->mdata.rx_rate - RTW_DATA_RATE_VHT_NSS1_MCS0) / 10) + 1));
 		}
 		rt_len += 4;
 
@@ -529,6 +653,73 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 		rt_len += 2;
 	}
 
+	/* HE, Required Alignment: 2 bytes */
+	if (rx_req->mdata.rx_rate >= RTW_DATA_RATE_HE_NSS1_MCS0 && rx_req->mdata.rx_rate <= RTW_DATA_RATE_HE_NSS4_MCS11) {
+
+		struct ieee80211_radiotap_he he_hdr;
+		u8 ltf, he_gi, ss;
+
+		_rtw_memset(&he_hdr, 0, sizeof(struct ieee80211_radiotap_he));
+		rtap_hdr->it_present |= BIT(IEEE80211_RADIOTAP_HE);
+
+		rt_len += (rt_len % 2); /* Alignment */
+		/* Structure
+		   u16 data1, data2, data3, data4, data5, data6 */
+
+		/* HE PPDU Format: 0=HE_SU, 1=HE_EXT_SU, 2=HE_MU, 3=HE_TRIG */
+		he_hdr.data1 |= 0x0000;
+		he_hdr.data1 |= cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA1_DATA_MCS_KNOWN);
+		he_hdr.data1 |= cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA1_BW_RU_ALLOC_KNOWN);
+
+		he_hdr.data2 |= cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA2_GI_KNOWN);
+		he_hdr.data2 |= cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA2_NUM_LTF_SYMS_KNOWN);
+
+		he_hdr.data3 |= __le16_encode_bits((rx_req->mdata.rx_rate & 0xf), IEEE80211_RADIOTAP_HE_DATA3_DATA_MCS);
+
+		he_hdr.data5 |= cpu_to_le16((rx_req->mdata.bw));
+
+		switch (rx_req->mdata.rx_gi_ltf) {
+		case 0x0:
+			he_gi = IEEE80211_RADIOTAP_HE_DATA5_GI_3_2;
+			ltf = IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_4X;
+			break;
+		case 0x1:
+			he_gi = IEEE80211_RADIOTAP_HE_DATA5_GI_0_8;
+			ltf = IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_4X;
+			break;
+		case 0x2:
+			he_gi = IEEE80211_RADIOTAP_HE_DATA5_GI_1_6;
+			ltf = IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_2X;
+			break;
+		case 0x3:
+			he_gi = IEEE80211_RADIOTAP_HE_DATA5_GI_0_8;
+			ltf = IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_2X;
+			break;
+		case 0x4:
+			he_gi = IEEE80211_RADIOTAP_HE_DATA5_GI_1_6;
+			ltf = IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_1X;
+			break;
+		case 0x5:
+			he_gi = IEEE80211_RADIOTAP_HE_DATA5_GI_0_8;
+			ltf = IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_1X;
+			break;
+		default:
+			he_gi = IEEE80211_RADIOTAP_HE_DATA5_GI_0_8;
+			ltf = IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE_1X;
+			break;
+		}
+
+		he_hdr.data5 |= __le16_encode_bits(he_gi, IEEE80211_RADIOTAP_HE_DATA5_GI);
+		he_hdr.data5 |= __le16_encode_bits(ltf, IEEE80211_RADIOTAP_HE_DATA5_LTF_SIZE);
+
+		ss = cpu_to_le16(((0x70 & rx_req->mdata.rx_rate) >> 4) + 1);
+		he_hdr.data6 |= __le16_encode_bits(ss, IEEE80211_RADIOTAP_HE_DATA6_NSTS);
+
+		_rtw_memcpy(&hdr_buf[rt_len], &he_hdr, sizeof(struct ieee80211_radiotap_he));
+
+		rt_len += sizeof(struct ieee80211_radiotap_he);
+	}
+
 	/* frame timestamp, Required Alignment: 8 bytes */
 	if (0) { //(a->free_cnt) {
 		rtap_hdr->it_present |= BIT(IEEE80211_RADIOTAP_TIMESTAMP);
@@ -536,7 +727,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 			rt_len = ((rt_len + 7) & 0xFFF8); /* Alignment */
 
 		/* u64 timestamp */
-		tmp_64bit = cpu_to_le64(a->free_cnt);
+		tmp_64bit = cpu_to_le64(rx_req->mdata.freerun_cnt);
 		_rtw_memcpy(&hdr_buf[rt_len], &tmp_64bit, 8);
 		rt_len += 8;
 
@@ -577,7 +768,7 @@ sint rtw_fill_radiotap_hdr(_adapter *padapter, struct rx_pkt_attrib *a, u8 *buf)
 #endif
 
 	/* push to skb */
-	pskb = (_pkt *)buf;
+	pskb = (struct sk_buff *)buf;
 	if (skb_headroom(pskb) < rt_len) {
 		RTW_INFO("%s:%d %s headroom is too small.\n", __FILE__, __LINE__, __func__);
 		ret = _FAIL;

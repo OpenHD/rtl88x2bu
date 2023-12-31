@@ -511,7 +511,7 @@ static inline int rhashtable_compare(struct rhashtable_compare_arg *arg,
 	struct rhashtable *ht = arg->ht;
 	const char *ptr = obj;
 
-	return memcmp(ptr + ht->p.key_offset, arg->key, ht->p.key_len);
+	return (_rtw_memcmp(ptr + ht->p.key_offset, arg->key, ht->p.key_len) == _TRUE)? 0: 1;
 }
 
 /**
