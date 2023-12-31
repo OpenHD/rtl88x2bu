@@ -23,6 +23,7 @@ jobs:
 
     - name: build on x86
       run: |
+        sudo mkdir -p /lib/modules/6.2.0-1018-azure/kernel/drivers/net/wireless/
         sudo apt update 
         sudo apt install -y build-essential tree
         chmod +x install-driver.sh
