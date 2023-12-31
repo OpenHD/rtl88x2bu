@@ -33,7 +33,7 @@ SCRIPT_VERSION="20231115"
 MODULE_NAME="8852bu_ohd"
 
 DRV_NAME="rtl8852bu"
-DRV_VERSION=$(grep "^#define DRIVERVERSION" "$file_path" | awk '{print $3}' | tr -d '"')
+DRV_VERSION=$(grep "^#define DRIVERVERSION" "include/rtw_version.h" | awk '{print $3}' | tr -d '"')
 echo $DRV_VERSION
 DRV_DIR="$(pwd)"
 
