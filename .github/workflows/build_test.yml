@@ -28,6 +28,6 @@ jobs:
         sudo apt install -y build-essential tree
         # chmod +x install-driver.sh
         # sudo ./install-driver.sh
-        make
-        make install
+        sudo make
+        sudo make install
         ls
