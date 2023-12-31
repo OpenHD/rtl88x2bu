@@ -26,6 +26,6 @@ jobs:
         sudo apt update 
         sudo apt install -y build-essential tree
         chmod +x install-driver.sh
-        ./install-driver.sh
+        sudo ./install-driver.sh
         # make
         ls
