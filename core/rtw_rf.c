@@ -334,7 +334,7 @@ static u8 _rtw_get_scch_by_bcch_offset(enum band_type band, u8 cch, u8 bw, u8 of
 
 	if (band == BAND_ON_24G) {
 		/* 2.4G, 40MHz */
-		if (cch >= 3 && cch <= 11 && bw == CHANNEL_WIDTH_40) {
+		if (cch >= 3 && cch <= 14 && bw == CHANNEL_WIDTH_40) { // OpenHD fix:
 			t_cch = (offset == CHAN_OFFSET_LOWER) ? cch + 2 : cch - 2;
 			goto exit;
 		}
@@ -353,7 +353,7 @@ static u8 _rtw_get_scch_by_bcch_offset(enum band_type band, u8 cch, u8 bw, u8 of
 			goto exit;
 
 		/* 5G, 40MHz */
-		} else if (cch >= 38 && cch <= 175 && bw == CHANNEL_WIDTH_40) {
+		} else if (cch >= 32 && cch <= 177 && bw == CHANNEL_WIDTH_40) { //OpenHD fix:
 			t_cch = (offset == CHAN_OFFSET_LOWER) ? cch + 2 : cch - 2;
 			goto exit;
 
