@@ -1188,6 +1188,14 @@ u8 rtw_reset_drv_sw(_adapter *padapter)
 	return ret8;
 }
 
+	// OpenHD params
+	int openhd_override_channel = 0;
+	module_param(openhd_override_channel, int, 0644);
+	MODULE_PARM_DESC(openhd_override_channel, "OpenHD easy (CRDA workaround)");
+	int openhd_override_tx_power_mbm = 0;
+	module_param(openhd_override_tx_power_mbm, int, 0644);
+	MODULE_PARM_DESC(openhd_override_tx_power_mbm, "OpenHD easy (CRDA workaround)");
+
 static void devobj_decide_init_chplan(struct dvobj_priv *dvobj)
 {
 	struct rf_ctl_t *rfctl = dvobj_to_rfctl(dvobj);
