@@ -402,6 +402,7 @@ struct pkt_attrib {
 	u8   mbssid;
 	u8	ldpc;
 	u8	stbc;
+	u8 monitor_mode_frame;
 
 	struct sta_info *psta;
 

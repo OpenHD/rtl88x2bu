@@ -2033,5 +2033,9 @@ __inline static void RTW_ENABLE_FUNC(struct dvobj_priv *dvobj, int func_bit)
 #endif
 #include <rtw_trx_ops.h>
 
+// OpenHD crda workaround
+int get_openhd_override_channel(void);
+int get_openhd_override_tx_power_mbm(void);
+
 
 #endif /* __DRV_TYPES_H__ */
