@@ -6923,6 +6923,7 @@ int rtw_pd_iface_alloc(struct wiphy *wiphy, const char *name, struct wireless_de
 	struct rtw_netdev_priv_indicator *npi;
 	_adapter *primary_adpt = wiphy_to_adapter(wiphy);
 	int ret = 0;
+	int openhd_override_tx_power_mbm=0;
 
 	if (wiphy_data->pd_wdev) {
 		RTW_WARN(FUNC_WIPHY_FMT" pd_wdev already exists\n", FUNC_WIPHY_ARG(wiphy));
@@ -6936,6 +6937,18 @@ int rtw_pd_iface_alloc(struct wiphy *wiphy, const char *name, struct wireless_de
 		ret = -ENOMEM;
 		goto exit;
 	}
+
+	// OpenHD
+    openhd_override_tx_power_mbm=get_openhd_override_tx_power_mbm();
+    if(openhd_override_tx_power_mbm){
+        wiphy_data->txpwr_total_lmt_mbm = UNSPECIFIED_MBM;
+        wiphy_data->txpwr_total_target_mbm= openhd_override_tx_power_mbm;
+        // If the chip cannot do the requested tx power, the driver just seems to set tx power index 63"
+        RTW_WARN("Using openhd_override_tx_power_mbm %d",openhd_override_tx_power_mbm);
+    }
+    RTW_WARN(FUNC_WIPHY_FMT" OpenHD cf80211 tx power %s txpwr_total_lmt_mbm:%d txpwr_total_target_mbm%d openhd_override_tx_power_mbm:%d\n", FUNC_WIPHY_ARG(wiphy)
+		, nl80211_tx_power_setting_str(type), wiphy_data->txpwr_total_lmt_mbm,wiphy_data->txpwr_total_target_mbm,
+        openhd_override_tx_power_mbm);
 
 	wdev->wiphy = wiphy;
 	wdev->iftype = NL80211_IFTYPE_P2P_DEVICE;
