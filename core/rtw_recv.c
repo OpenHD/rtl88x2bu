@@ -3892,9 +3892,9 @@ int recv_frame_monitor(_adapter *padapter, union recv_frame *rframe, struct rtw_
 
 	if (ndev->type == ARPHRD_IEEE80211_RADIOTAP) {
 		/* fill radiotap header */
-		// if (rtw_fill_radiotap_hdr(padapter, rframe->u.hdr.adapter_link,
-		// 			&rframe->u.hdr.attrib, rx_req, (u8 *)pskb) == _FAIL) {
-		if (rtl8812au_fill_radiotap_hdr(padapter, rframe) == _FAIL) {
+		if (rtw_fill_radiotap_hdr(padapter, rframe->u.hdr.adapter_link,
+					&rframe->u.hdr.attrib, rx_req, (u8 *)pskb) == _FAIL) {
+		// if (rtl8812au_fill_radiotap_hdr(padapter, rframe) == _FAIL) {
 			ret = _FAIL;
 			goto exit;
 		}
