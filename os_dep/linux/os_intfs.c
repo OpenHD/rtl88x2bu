@@ -3642,3 +3642,10 @@ int rtw_vendor_ie_set_api(struct net_device *dev, char *extra)
 EXPORT_SYMBOL(rtw_vendor_ie_set_api);
 
 #endif
+
+int get_openhd_override_channel(void){
+    return openhd_override_channel;
+}
+int get_openhd_override_tx_power_mbm(void){
+    return openhd_override_tx_power_mbm;
+}
