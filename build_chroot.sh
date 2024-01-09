@@ -25,11 +25,11 @@ make KSRC=/usr/src/linux-headers-6.3.13-060313-generic O="" modules
 mkdir -p package/lib/modules/6.3.13-060313-generic/kernel/drivers/net/wireless/
 cp *.ko package/lib/modules/6.3.13-060313-generic/kernel/drivers/net/wireless/
 ls -a
-fpm -a amd64 -s dir -t deb -n rtl88x2bu-x86 -v 2.5-evo-$(date '+%m%d%H%M') -C package -p rtl88x2bu-x86.deb --before-install before-install.sh
+fpm -a amd64 -s dir -t deb -n rtl8852bu-x86 -v 2.5-evo-$(date '+%m%d%H%M') -C package -p rtl8852bu-x86.deb --before-install before-install.sh
 
 echo "copied deb file"
 echo "push to cloudsmith"
 git describe --exact-match HEAD >/dev/null 2>&1
 echo "Pushing the package to OpenHD 2.5 repository"
 ls -a
-cloudsmith push deb --api-key "$API_KEY" openhd/release/ubuntu/lunar rtl88x2bu-x86.deb || exit 1
+cloudsmith push deb --api-key "$API_KEY" openhd/release/ubuntu/lunar rtl8852bu-x86.deb || exit 1
