@@ -1,2 +1,2 @@
 #!/bin/bash
-depmod -a
+# depmod -a
