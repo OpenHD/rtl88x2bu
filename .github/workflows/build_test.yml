@@ -19,6 +19,7 @@ jobs:
     - name: build on x86
       run: |
         ls -a
+        echo $PWD
         sudo apt update 
         sudo apt install -y build-essential
         make
