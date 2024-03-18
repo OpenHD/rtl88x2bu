@@ -22,8 +22,24 @@ jobs:
       - name: test
         run: |
           echo "DT=$(date +'%Y-%m-%d_%H%M')" >> $GITHUB_ENV
-          echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV    
-             
+          echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV 
+
+      - name: remove even more
+        run: |
+          sudo apt-get purge -y \
+            '^llvm-.*' \
+            'php.*' \
+            '^mongodb-.*' \
+            '^mysql-.*' \
+            azure-cli \
+            google-chrome-stable \
+            firefox \
+            powershell \
+            microsoft-edge-stable \
+            mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean     
+           
       - name: Checkout repository and submodules
         uses: actions/checkout@v3
         with:
