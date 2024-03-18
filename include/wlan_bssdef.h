@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -193,9 +193,11 @@ typedef struct _NDIS_802_11_WEP {
 #define Ndis802_11APMode (Ndis802_11InfrastructureMax+1)
 #endif
 
+/*RTW_WKARD_CORE_RSSI_V1 - GEORGIA MUST REFINE*/
 typedef struct _WLAN_PHY_INFO {
 	u8	SignalStrength;/* (in percentage) */
 	u8	SignalQuality;/* (in percentage) */
+	s8 	rssi; /*dbm*/
 	u8	Optimum_antenna;  /* for Antenna diversity */
 	u8	is_cck_rate;	/* 1:cck_rate */
 	s8	rx_snr[4];
@@ -235,16 +237,16 @@ typedef struct _WLAN_BSSID_EX {
 	NDIS_802_11_SSID  Ssid;
 	NDIS_802_11_SSID  mesh_id;
 	u32  Privacy;
-	NDIS_802_11_RSSI  Rssi;/* (in dBM,raw data ,get from PHY) */
 	NDIS_802_11_CONFIGURATION  Configuration;
 	NDIS_802_11_NETWORK_INFRASTRUCTURE  InfrastructureMode;
 	NDIS_802_11_RATES_EX  SupportedRates;
 	WLAN_PHY_INFO	PhyInfo;
+#ifdef CONFIG_STA_MULTIPLE_BSSID
+	u8 is_mbssid;
+	u8 mbssid_index;
+#endif
 	u32  IELength;
 	u8  IEs[MAX_IE_SZ];	/* (timestamp, beacon interval, and capability information) */
-#ifdef	CONFIG_LAYER2_ROAMING
-	u64 tsf;
-#endif
 }
 __attribute__((packed)) WLAN_BSSID_EX, *PWLAN_BSSID_EX;
 

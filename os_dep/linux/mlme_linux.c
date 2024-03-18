@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -101,9 +101,8 @@ void rtw_reset_securitypriv(_adapter *adapter)
 	u8	backupTKIPCountermeasure = 0x00;
 	u32	backupTKIPcountermeasure_time = 0;
 	/* add for CONFIG_IEEE80211W, none 11w also can use */
-	_irqL irqL;
 
-	_enter_critical_bh(&adapter->security_key_mutex, &irqL);
+	_rtw_spinlock_bh(&adapter->security_key_mutex);
 
 	if (adapter->securitypriv.dot11AuthAlgrthm == dot11AuthAlgrthm_8021X) { /* 802.1x */
 		u8 backup_sw_encrypt, backup_sw_decrypt;
@@ -159,7 +158,7 @@ void rtw_reset_securitypriv(_adapter *adapter)
 		psec_priv->extauth_status = WLAN_STATUS_UNSPECIFIED_FAILURE;
 	}
 	/* add for CONFIG_IEEE80211W, none 11w also can use */
-	_exit_critical_bh(&adapter->security_key_mutex, &irqL);
+	_rtw_spinunlock_bh(&adapter->security_key_mutex);
 
 	RTW_INFO(FUNC_ADPT_FMT" - End to Disconnect\n", FUNC_ADPT_ARG(adapter));
 }
@@ -241,16 +240,16 @@ void rtw_indicate_sta_assoc_event(_adapter *padapter, struct sta_info *psta)
 	if (psta == NULL)
 		return;
 
-	if (psta->cmn.aid > pstapriv->max_aid)
+	if (psta->phl_sta->aid > pstapriv->max_aid)
 		return;
 
-	if (pstapriv->sta_aid[psta->cmn.aid - 1] != psta)
+	if (pstapriv->sta_aid[psta->phl_sta->aid - 1] != psta)
 		return;
 
 
 	wrqu.addr.sa_family = ARPHRD_ETHER;
 
-	_rtw_memcpy(wrqu.addr.sa_data, psta->cmn.mac_addr, ETH_ALEN);
+	_rtw_memcpy(wrqu.addr.sa_data, psta->phl_sta->mac_addr, ETH_ALEN);
 
 	RTW_INFO("+rtw_indicate_sta_assoc_event\n");
 
@@ -268,16 +267,16 @@ void rtw_indicate_sta_disassoc_event(_adapter *padapter, struct sta_info *psta)
 	if (psta == NULL)
 		return;
 
-	if (psta->cmn.aid > pstapriv->max_aid)
+	if (psta->phl_sta->aid > pstapriv->max_aid)
 		return;
 
-	if (pstapriv->sta_aid[psta->cmn.aid - 1] != psta)
+	if (pstapriv->sta_aid[psta->phl_sta->aid - 1] != psta)
 		return;
 
 
 	wrqu.addr.sa_family = ARPHRD_ETHER;
 
-	_rtw_memcpy(wrqu.addr.sa_data, psta->cmn.mac_addr, ETH_ALEN);
+	_rtw_memcpy(wrqu.addr.sa_data, psta->phl_sta->mac_addr, ETH_ALEN);
 
 	RTW_INFO("+rtw_indicate_sta_disassoc_event\n");
 
@@ -313,8 +312,6 @@ static int mgnt_netdev_open(struct net_device *pnetdev)
 
 	rtw_netif_carrier_on(pnetdev);
 
-	/* rtw_write16(phostapdpriv->padapter, 0x0116, 0x0100); */ /* only excluding beacon */
-
 	return 0;
 }
 static int mgnt_netdev_close(struct net_device *pnetdev)
@@ -328,8 +325,6 @@ static int mgnt_netdev_close(struct net_device *pnetdev)
 	rtw_netif_carrier_off(pnetdev);
 
 	rtw_netif_stop_queue(pnetdev);
-
-	/* rtw_write16(phostapdpriv->padapter, 0x0116, 0x3f3f); */
 
 	return 0;
 }

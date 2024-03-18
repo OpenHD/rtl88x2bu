@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -97,6 +97,9 @@ const char *android_wifi_cmd_str[ANDROID_WIFI_CMD_MAX] = {
 	"SET_AEK",
 	"EXT_AUTH_STATUS",
 	"DRIVER_VERSION"
+#ifdef ROKU_PRIVATE
+	,"ROKU_FIND_REMOTE"
+#endif
 };
 
 #ifdef CONFIG_PNO_SUPPORT
@@ -282,7 +285,7 @@ exit_proc:
  * net: net_device
  * request: cfg80211_request
  * */
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
 int rtw_android_cfg80211_pno_setup(struct net_device *net,
 		   struct cfg80211_ssid *ssids, int n_ssids, int interval)
 {
@@ -305,7 +308,7 @@ int rtw_android_cfg80211_pno_setup(struct net_device *net,
 
 	for (index = 0 ; index < nssid ; index++) {
 		pno_ssids_local[index].SSID_len = ssids[index].ssid_len;
-		memcpy(pno_ssids_local[index].SSID, ssids[index].ssid,
+		_rtw_memcpy(pno_ssids_local[index].SSID, ssids[index].ssid,
 		       ssids[index].ssid_len);
 	}
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0)
@@ -322,10 +325,10 @@ int rtw_android_cfg80211_pno_setup(struct net_device *net,
 #ifdef CONFIG_PNO_SET_DEBUG
 	rtw_dev_pno_debug(net);
 #endif
-exit_proc:
+
 	return res;
 }
-
+#endif
 int rtw_android_pno_enable(struct net_device *net, int pno_enable)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(net);
@@ -373,7 +376,7 @@ int rtw_android_get_rssi(struct net_device *net, char *command, int total_len)
 
 	if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
 		bytes_written += snprintf(&command[bytes_written], total_len, "%s rssi %d",
-			pcur_network->network.Ssid.Ssid, padapter->recvpriv.rssi);
+			pcur_network->network.Ssid.Ssid, padapter->recvinfo.rssi);
 	}
 
 	return bytes_written;
@@ -405,7 +408,7 @@ int rtw_android_set_country(struct net_device *net, char *command, int total_len
 	char *country_code = command + strlen(android_wifi_cmd_str[ANDROID_WIFI_CMD_COUNTRY]) + 1;
 	int ret = _FAIL;
 
-	ret = rtw_set_country(adapter, country_code);
+	ret = rtw_set_country(adapter, country_code, RTW_REGD_SET_BY_USER);
 
 	return (ret == _SUCCESS) ? 0 : -1;
 }
@@ -598,7 +601,7 @@ exit:
 
 int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 {
-	#define PRIVATE_COMMAND_MAX_LEN        8192
+	#define PRIVATE_COMMAND_MAX_LEN		65536
 	int ret = 0;
 	char *command = NULL;
 	int cmd_num;
@@ -697,7 +700,7 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		goto exit;
 	}
 
-	if (!hal_chk_wl_func(padapter, WL_FUNC_MIRACAST)) {
+	if (!rtw_hw_chk_wl_func(adapter_to_dvobj(padapter), WL_FUNC_MIRACAST)) {
 		switch (cmd_num) {
 		case ANDROID_WIFI_CMD_WFD_ENABLE:
 		case ANDROID_WIFI_CMD_WFD_DISABLE:
@@ -716,11 +719,6 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 
 	case ANDROID_WIFI_CMD_SCAN_ACTIVE:
 		/* rtw_set_scan_mode((_adapter *)rtw_netdev_priv(net), SCAN_ACTIVE); */
-#ifdef CONFIG_PLATFORM_MSTAR
-#ifdef CONFIG_IOCTL_CFG80211
-		adapter_wdev_data((_adapter *)rtw_netdev_priv(net))->bandroid_scan = _TRUE;
-#endif /* CONFIG_IOCTL_CFG80211 */
-#endif /* CONFIG_PLATFORM_MSTAR */
 		break;
 	case ANDROID_WIFI_CMD_SCAN_PASSIVE:
 		/* rtw_set_scan_mode((_adapter *)rtw_netdev_priv(net), SCAN_PASSIVE); */
@@ -828,13 +826,13 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		break;
 
 #ifdef CONFIG_IOCTL_CFG80211
-	#ifdef CONFIG_AP_MODE
 	case ANDROID_WIFI_CMD_SET_AP_WPS_P2P_IE: {
 		int skip = strlen(android_wifi_cmd_str[ANDROID_WIFI_CMD_SET_AP_WPS_P2P_IE]) + 3;
 		bytes_written = rtw_cfg80211_set_mgnt_wpsp2pie(net, command + skip, priv_cmd.total_len - skip, *(command + skip - 2) - '0');
+
+		adapter_to_dvobj(padapter)->wpas_type = RTW_WPAS_ANDROID;
 		break;
 	}
-	#endif
 #endif /* CONFIG_IOCTL_CFG80211 */
 
 #ifdef CONFIG_WFD
@@ -848,8 +846,7 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		/*	We can enable the WFD function by using the following command: */
 		/*	wpa_cli driver wfd-enable */
 
-		if (padapter->wdinfo.driver_interface == DRIVER_CFG80211)
-			rtw_wfd_enable(padapter, 1);
+		rtw_wfd_enable(padapter, 1);
 		break;
 	}
 
@@ -858,8 +855,7 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		/*	We can disable the WFD function by using the following command: */
 		/*	wpa_cli driver wfd-disable */
 
-		if (padapter->wdinfo.driver_interface == DRIVER_CFG80211)
-			rtw_wfd_enable(padapter, 0);
+		rtw_wfd_enable(padapter, 0);
 		break;
 	}
 	case ANDROID_WIFI_CMD_WFD_SET_TCPPORT: {
@@ -867,8 +863,7 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		/*	We can set the tcp port number by using the following command: */
 		/*	wpa_cli driver wfd-set-tcpport = 554 */
 
-		if (padapter->wdinfo.driver_interface == DRIVER_CFG80211)
-			rtw_wfd_set_ctrl_port(padapter, (u16)get_int_from_command(command));
+		rtw_wfd_set_ctrl_port(padapter, (u16)get_int_from_command(command));
 		break;
 	}
 	case ANDROID_WIFI_CMD_WFD_SET_MAX_TPUT: {
@@ -879,10 +874,9 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		/*	Specify the WFD device type ( WFD source/primary sink ) */
 
 		pwfd_info = &padapter->wfd_info;
-		if (padapter->wdinfo.driver_interface == DRIVER_CFG80211) {
-			pwfd_info->wfd_device_type = (u8) get_int_from_command(command);
-			pwfd_info->wfd_device_type &= WFD_DEVINFO_DUAL;
-		}
+
+		pwfd_info->wfd_device_type = (u8) get_int_from_command(command);
+		pwfd_info->wfd_device_type &= WFD_DEVINFO_DUAL;
 		break;
 	}
 #endif
@@ -927,7 +921,8 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 #endif /* CONFIG_GTK_OL		 */
 	case ANDROID_WIFI_CMD_P2P_DISABLE: {
 #ifdef CONFIG_P2P
-		rtw_p2p_enable(padapter, P2P_ROLE_DISABLE);
+		/* This Android private command is no longer in use */
+		/* rtw_p2p_enable(padapter, P2P_ROLE_DISABLE); */
 #endif /* CONFIG_P2P */
 		break;
 	}
@@ -949,6 +944,35 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		snprintf(command, bytes_written + 1, DRIVERVERSION);
 		break;
 	}
+#ifdef ROKU_PRIVATE
+	case ANDROID_WIFI_CMD_ROKU_FIND_REMOTE: {
+		struct mlme_ext_priv *pmlmeext = &(padapter->mlmeextpriv);
+		struct wifidirect_info	*pwdinfo = &(padapter->wdinfo);
+		u8 	num, cmdlen;
+		u8	*ptr,*remote_mac_addr;
+		int 	i;
+
+		cmdlen = strlen(android_wifi_cmd_str[ANDROID_WIFI_CMD_ROKU_FIND_REMOTE]);
+		num = *(command + cmdlen + 1) - '0';
+
+		if (num != 0) {
+			pwdinfo->num_of_remote = num;
+			remote_mac_addr = pwdinfo->remote_mac_address;
+			ptr = command + cmdlen + 3;
+
+			for (i = 0; i < num; i++) {
+				macstr2num(remote_mac_addr, ptr);
+				ptr += 18; /* skip space and go to next mac addr */
+				remote_mac_addr += 6;
+			}
+
+			set_find_remote_timer(pmlmeext, 1);
+		}
+		else
+			_cancel_timer_ex(&pmlmeext->find_remote_timer);
+		break;
+	}
+#endif
 	default:
 		RTW_INFO("Unknown PRIVATE command %s - ignored\n", command);
 		snprintf(command, 3, "OK");
@@ -1123,13 +1147,9 @@ static int wifi_probe(struct platform_device *pdev)
 	       (int)wifi_irqres->start, wifi_wake_gpio);
 
 	if (wifi_wake_gpio > 0) {
-#ifdef CONFIG_PLATFORM_INTEL_BYT
-		wifi_configure_gpio();
-#else /* CONFIG_PLATFORM_INTEL_BYT */
 		gpio_request(wifi_wake_gpio, "oob_irq");
 		gpio_direction_input(wifi_wake_gpio);
 		oob_irq = gpio_to_irq(wifi_wake_gpio);
-#endif /* CONFIG_PLATFORM_INTEL_BYT */
 		RTW_INFO("%s oob_irq:%d\n", __func__, oob_irq);
 	} else if (wifi_irqres) {
 		oob_irq = wifi_irqres->start;
@@ -1146,11 +1166,10 @@ static int wifi_probe(struct platform_device *pdev)
 }
 
 #ifdef RTW_SUPPORT_PLATFORM_SHUTDOWN
-extern PADAPTER g_test_adapter;
+extern _adapter * g_test_adapter;
 
 static void shutdown_card(void)
 {
-	struct pwrctrl_priv *pwrpriv = adapter_to_pwrctl(g_test_adapter);
 	u32 addr;
 	u8 tmp8, cnt = 0;
 
@@ -1167,14 +1186,17 @@ static void shutdown_card(void)
 #ifdef CONFIG_GPIO_WAKEUP
 	/*default wake up pin change to BT*/
 	RTW_INFO("%s:default wake up pin change to BT\n", __FUNCTION__);
-	rtw_hal_switch_gpio_wl_ctrl(g_test_adapter, pwrpriv->wowlan_gpio_index, _FALSE);
+	/* ToDo: clear pin mux code is not ready
+	rtw_hal_switch_gpio_wl_ctrl(g_test_adapter, WAKEUP_GPIO_IDX, _FALSE); */
 #endif /* CONFIG_GPIO_WAKEUP */
 #endif /* CONFIG_WOWLAN */
 
 	/* Leave SDIO HCI Suspend */
+	#if 0 /*GEORGIA_TODO_REDEFINE_IO*/
 	addr = 0x10250086;
 	rtw_write8(g_test_adapter, addr, 0);
 	do {
+
 		tmp8 = rtw_read8(g_test_adapter, addr);
 		cnt++;
 		RTW_INFO(FUNC_ADPT_FMT ": polling SDIO_HSUS_CTRL(0x%x)=0x%x, cnt=%d\n",
@@ -1214,10 +1236,13 @@ static void shutdown_card(void)
 
 	/* lock register page0 0x0~0xB read/write */
 	rtw_write8(g_test_adapter, 0x1C, 0x0E);
-
-	rtw_set_surprise_removed(g_test_adapter);
+#else
+	rtw_hal_sdio_leave_suspend(g_test_adapter);
+#endif
+	dev_set_surprise_removed(adapter_to_dvobj(g_test_adapter));
 	RTW_INFO(FUNC_ADPT_FMT ": bSurpriseRemoved=%s\n",
-		FUNC_ADPT_ARG(g_test_adapter), rtw_is_surprise_removed(g_test_adapter) ? "True" : "False");
+		FUNC_ADPT_ARG(g_test_adapter),
+		dev_is_surprise_removed(adapter_to_dvobj(g_test_adapter)) ? "True" : "False");
 }
 #endif /* RTW_SUPPORT_PLATFORM_SHUTDOWN */
 
@@ -1312,35 +1337,4 @@ static void wifi_del_dev(void)
 }
 #endif /* defined(RTW_ENABLE_WIFI_CONTROL_FUNC) */
 
-#ifdef CONFIG_GPIO_WAKEUP
-#ifdef CONFIG_PLATFORM_INTEL_BYT
-int wifi_configure_gpio(void)
-{
-	if (gpio_request(oob_gpio, "oob_irq")) {
-		RTW_INFO("## %s Cannot request GPIO\n", __FUNCTION__);
-		return -1;
-	}
-	gpio_export(oob_gpio, 0);
-	if (gpio_direction_input(oob_gpio)) {
-		RTW_INFO("## %s Cannot set GPIO direction input\n", __FUNCTION__);
-		return -1;
-	}
-	oob_irq = gpio_to_irq(oob_gpio);
-	if (oob_irq < 0) {
-		RTW_INFO("## %s Cannot convert GPIO to IRQ\n", __FUNCTION__);
-		return -1;
-	}
 
-	RTW_INFO("## %s OOB_IRQ=%d\n", __FUNCTION__, oob_irq);
-
-	return 0;
-}
-#endif /* CONFIG_PLATFORM_INTEL_BYT */
-void wifi_free_gpio(unsigned int gpio)
-{
-#ifdef CONFIG_PLATFORM_INTEL_BYT
-	if (gpio)
-		gpio_free(gpio);
-#endif /* CONFIG_PLATFORM_INTEL_BYT */
-}
-#endif /* CONFIG_GPIO_WAKEUP */

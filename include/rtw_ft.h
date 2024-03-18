@@ -57,11 +57,11 @@ enum _rtw_ft_sta_status {
 		((a)->mlmepriv.ft_roam.ft_status = (s)); \
 	} while (0)
 
-#define rtw_ft_lock_set_status(a, s, irq) \
+#define rtw_ft_lock_set_status(a, s) \
 	do { \
-		_enter_critical_bh(&(a)->mlmepriv.lock, ((_irqL *)(irq)));	\
+		_rtw_spinlock_bh(&(a)->mlmepriv.lock);	\
 		((a)->mlmepriv.ft_roam.ft_status = (s));	\
-		_exit_critical_bh(&(a)->mlmepriv.lock, ((_irqL *)(irq)));	\
+		_rtw_spinunlock_bh(&(a)->mlmepriv.lock);	\
 	} while (0)
 
 #define rtw_ft_reset_status(a) \
@@ -93,7 +93,7 @@ enum rtw_ft_capability {
 
 #define rtw_ft_roam(a)	\
 	((rtw_to_roam(a) > 0) && rtw_ft_chk_flags(a, RTW_FT_PEER_EN))
-	
+
 #define rtw_ft_valid_akm(a, t)	\
 	((rtw_ft_chk_flags(a, RTW_FT_EN)) && \
 	(((t) == 3) || ((t) == 4)))
@@ -102,11 +102,18 @@ enum rtw_ft_capability {
 	((rtw_chk_roam_flags(a, RTW_ROAM_ON_EXPIRED)) \
 	&& (r == WLAN_REASON_ACTIVE_ROAM))
 
+/* allow OTD while driver disconnect with current AP */
+#if 1
+#define rtw_ft_otd_roam_en(a)	\
+	((rtw_ft_chk_flags(a, RTW_FT_OTD_EN))	\
+	&& ((a)->mlmepriv.ft_roam.ft_cap & 0x01))
+#else
 #define rtw_ft_otd_roam_en(a)	\
 	((rtw_ft_chk_flags(a, RTW_FT_OTD_EN))	\
 	&& ((a)->mlmepriv.ft_roam.ft_roam_on_expired == _FALSE)	\
 	&& ((a)->mlmepriv.ft_roam.ft_cap & 0x01))
-	
+#endif
+
 #define rtw_ft_otd_roam(a) \
 	rtw_ft_chk_flags(a, RTW_FT_PEER_OTD_EN)
 
@@ -119,7 +126,7 @@ enum rtw_ft_capability {
 
 struct ft_roam_info {
 	u16	mdid;
-	u8	ft_cap;	
+	u8	ft_cap;
 	/*b0: FT over DS, b1: Resource Req Protocol Cap, b2~b7: Reserved*/
 	u8	updated_ft_ies[RTW_FT_MAX_IE_SZ];
 	u16	updated_ft_ies_len;
@@ -130,7 +137,16 @@ struct ft_roam_info {
 	u8	ft_flags;
 	u32 ft_status;
 	u32 ft_req_retry_cnt;
-	bool ft_updated_bcn;	
+	bool ft_updated_bcn;
+};
+
+struct rtw_sta_ft_info_t {
+	u8 *rsn_ie;
+	u32 rsn_len;
+	u8 *md_ie;
+	u32 md_len;
+	u8 *ft_ie;
+	u32 ft_len;
 };
 
 void rtw_ft_info_init(struct ft_roam_info *pft);
@@ -155,13 +171,13 @@ void rtw_ft_update_bcn(_adapter *padapter, union recv_frame *precv_frame);
 void rtw_ft_start_clnt_join(_adapter *padapter);
 
 u8 rtw_ft_update_rsnie(
-	_adapter *padapter, u8 bwrite, 
+	_adapter *padapter, u8 bwrite,
 	struct pkt_attrib *pattrib, u8 **pframe);
 
-void rtw_ft_build_auth_req_ies(_adapter *padapter, 
+void rtw_ft_build_auth_req_ies(_adapter *padapter,
 	struct pkt_attrib *pattrib, u8 **pframe);
 
-void rtw_ft_build_assoc_req_ies(_adapter *padapter, 
+void rtw_ft_build_assoc_req_ies(_adapter *padapter,
 	u8 is_reassoc, struct pkt_attrib *pattrib, u8 **pframe);
 
 u8 rtw_ft_update_auth_rsp_ies(_adapter *padapter, u8 *pframe, u32 len);
@@ -179,5 +195,20 @@ void rtw_ft_link_timer_hdl(void *ctx);
 void rtw_ft_roam_timer_hdl(void *ctx);
 
 void rtw_ft_roam_status_reset(_adapter *padapter);
+
+void rtw_ft_peer_info_init(struct sta_info *psta);
+
+void rtw_ft_peer_info_free(struct sta_info *psta);
+
+int rtw_ft_update_sta_ies(_adapter *padapter,
+	struct cfg80211_update_ft_ies_params *pie);
+
+void rtw_ft_update_assocresp_ies(struct net_device *net,
+	struct cfg80211_ap_settings *settings);
+
+void rtw_ft_process_ft_auth_rsp(_adapter *padapter, u8 *pframe, u32 len);
+
+void rtw_ft_build_assoc_rsp_ies(_adapter *padapter,
+	struct sta_info *psta, struct pkt_attrib *pattrib, u8 **pframe);
 
 #endif /* __RTW_FT_H_ */

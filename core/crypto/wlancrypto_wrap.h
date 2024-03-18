@@ -31,4 +31,11 @@ u8* gcmp_encrypt(_adapter *padapter, const u8 *tk, size_t tk_len, const u8 *fram
 	size_t hdrlen, const u8 *qos,
 	const u8 *pn, int keyid, size_t *encrypted_len);
 
+#if 0 //RTW_PHL_TX: mark un-finished codes for reading
+void core_ccmp_encrypt(const u8 *tk, uint hdrlen, u8 *phdr, uint datalen, u8 *pdata, 
+	u8 *qos, u8 *pn, int keyid, size_t *encrypted_len);
+
+void core_ccmp_256_encrypt(const u8 *tk, uint hdrlen, u8 *phdr, uint datalen, u8 *pdata, 
+		      u8 *qos, u8 *pn, int keyid, size_t *encrypted_len);
+#endif
 #endif /* WLANCRYPTO_WRAP_H */

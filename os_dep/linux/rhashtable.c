@@ -727,10 +727,10 @@ int rhashtable_init(struct rhashtable *ht,
 	if (params->nulls_base && params->nulls_base < (1U << RHT_BASE_SHIFT))
 		return -EINVAL;
 
-	memset(ht, 0, sizeof(*ht));
+	_rtw_memset(ht, 0, sizeof(*ht));
 	mutex_init(&ht->mutex);
 	spin_lock_init(&ht->lock);
-	memcpy(&ht->p, params, sizeof(*params));
+	_rtw_memcpy(&ht->p, params, sizeof(*params));
 
 	if (params->min_size)
 		ht->p.min_size = roundup_pow_of_two(params->min_size);

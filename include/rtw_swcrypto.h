@@ -18,6 +18,11 @@
 
 #define NEW_CRYPTO 1
 
+#if 0 //RTW_PHL_TX: mark un-finished codes for reading
+int _rtw_core_ccmp_encrypt(u8 *key, u32 key_len, uint hdrlen, u8 *phdr, uint datalen, u8 *pdata);
+#endif
+
+
 int _rtw_ccmp_encrypt(_adapter *padapter, u8 *key, u32 key_len, uint hdrlen, u8 *frame, uint plen);
 int _rtw_ccmp_decrypt(_adapter *padapter, u8 *key, u32 key_len, uint hdrlen, u8 *frame, uint plen);
 

@@ -47,7 +47,7 @@ static void ccmp_aad_nonce(_adapter *padapter, const struct ieee80211_hdr *hdr, 
 	fc |= WLAN_FC_ISWEP;
 	WPA_PUT_LE16(aad, fc);
 	pos = aad + 2;
-	os_memcpy(pos, GetAddr1Ptr((u8 *)hdr), 3 * ETH_ALEN);
+	os_memcpy(pos, hdr->addr1, 3 * ETH_ALEN);
 	pos += 3 * ETH_ALEN;
 	seq = le_to_host16(hdr->seq_ctrl);
 	seq &= ~0xfff0; /* Mask Seq#; do not modify Frag# */
@@ -383,3 +383,128 @@ u8 * ccmp_256_encrypt(_adapter *padapter, const u8 *tk, u8 *frame, size_t len, s
 
 	return crypt;
 }
+
+#if 0 //RTW_PHL_TX: mark un-finished codes for reading
+void core_ccmp_encrypt(const u8 *tk, uint hdrlen, u8 *phdr, uint datalen, u8 *pdata, 
+	u8 *qos, u8 *pn, int keyid, size_t *encrypted_len)
+{
+	u8 aad[30], nonce[13];
+	size_t aad_len;
+	u8 *crypt, *pos;
+	struct ieee80211_hdr *hdr;
+	size_t enc_hdrlen, enc_datalen = 0;
+
+	if (hdrlen < 24)
+		return;
+
+	enc_hdrlen = hdrlen + 8;
+	enc_datalen = datalen + 8;
+
+	crypt = os_malloc(enc_hdrlen + enc_hdrlen + AES_BLOCK_SIZE);
+	if (crypt == NULL)
+		return;
+
+	if (pn == NULL) {
+		os_memcpy(crypt, phdr, hdrlen + 8);
+		hdr = (struct ieee80211_hdr *) crypt;
+		hdr->frame_control |= host_to_le16(WLAN_FC_ISWEP);
+		pos = crypt + hdrlen + 8;
+	} else {
+		os_memcpy(crypt, phdr, hdrlen);
+		hdr = (struct ieee80211_hdr *) crypt;
+		hdr->frame_control |= host_to_le16(WLAN_FC_ISWEP);
+		pos = crypt + hdrlen;
+		*pos++ = pn[5]; /* PN0 */
+		*pos++ = pn[4]; /* PN1 */
+		*pos++ = 0x00; /* Rsvd */
+		*pos++ = 0x20 | (keyid << 6);
+		*pos++ = pn[3]; /* PN2 */
+		*pos++ = pn[2]; /* PN3 */
+		*pos++ = pn[1]; /* PN4 */
+		*pos++ = pn[0]; /* PN5 */
+	}
+
+	os_memset(aad, 0, sizeof(aad));
+	ccmp_aad_nonce(hdr, crypt + hdrlen, aad, &aad_len, nonce);
+	wpa_hexdump(_MSG_EXCESSIVE_, "CCMP AAD", aad, aad_len);
+	wpa_hexdump(_MSG_EXCESSIVE_, "CCMP nonce", nonce, 13);
+
+	if (aes_ccm_ae(tk, 16, nonce, 8, pdata, datalen, aad, aad_len,
+		       pos, pos + datalen) < 0) {
+		rtw_mfree(crypt, hdrlen + 8 + datalen + 8 + AES_BLOCK_SIZE);
+		return;
+	}
+
+	wpa_hexdump(_MSG_EXCESSIVE_, "CCMP encrypted", crypt + enc_hdrlen, datalen);
+
+	/* Copy @enc back to @frame and free @enc */
+	_rtw_memcpy(phdr, crypt, enc_hdrlen);
+	_rtw_memcpy(pdata, crypt + enc_hdrlen, enc_datalen);
+	
+	rtw_mfree(crypt, enc_hdrlen+enc_datalen+AES_BLOCK_SIZE);
+
+	return;
+}
+
+
+void core_ccmp_256_encrypt(const u8 *tk, uint hdrlen, u8 *phdr, uint datalen, u8 *pdata, 
+		      u8 *qos, u8 *pn, int keyid, size_t *encrypted_len)
+{
+	u8 aad[30], nonce[13];
+	size_t aad_len;
+	u8 *crypt, *pos;
+	struct ieee80211_hdr *hdr;
+	size_t enc_hdrlen, enc_datalen = 0;
+
+	if (hdrlen < 24)
+		return;
+
+	enc_hdrlen = hdrlen + 8;
+	enc_datalen = datalen + 16;
+
+	crypt = os_malloc(enc_hdrlen + enc_hdrlen + AES_BLOCK_SIZE);
+	
+	if (crypt == NULL)
+		return;
+
+	if (pn == NULL) {
+		os_memcpy(crypt, phdr, hdrlen + 8);
+		hdr = (struct ieee80211_hdr *) crypt;
+		hdr->frame_control |= host_to_le16(WLAN_FC_ISWEP);
+		pos = crypt + hdrlen + 8;
+	} else {
+		os_memcpy(crypt, phdr, hdrlen);
+		hdr = (struct ieee80211_hdr *) crypt;
+		hdr->frame_control |= host_to_le16(WLAN_FC_ISWEP);
+		pos = crypt + hdrlen;
+		*pos++ = pn[5]; /* PN0 */
+		*pos++ = pn[4]; /* PN1 */
+		*pos++ = 0x00; /* Rsvd */
+		*pos++ = 0x20 | (keyid << 6);
+		*pos++ = pn[3]; /* PN2 */
+		*pos++ = pn[2]; /* PN3 */
+		*pos++ = pn[1]; /* PN4 */
+		*pos++ = pn[0]; /* PN5 */
+	}
+
+	os_memset(aad, 0, sizeof(aad));
+	ccmp_aad_nonce(hdr, crypt + hdrlen, aad, &aad_len, nonce);
+	wpa_hexdump(_MSG_EXCESSIVE_, "CCMP-256 AAD", aad, aad_len);
+	wpa_hexdump(_MSG_EXCESSIVE_, "CCMP-256 nonce", nonce, 13);
+
+	if (aes_ccm_ae(tk, 32, nonce, 16, pdata, datalen, aad, aad_len,
+		       pos, pos + datalen) < 0) {
+		rtw_mfree(crypt, enc_hdrlen + enc_datalen + AES_BLOCK_SIZE);
+		return;
+	}
+
+	wpa_hexdump(_MSG_EXCESSIVE_, "CCMP-256 encrypted", crypt + enc_hdrlen, datalen);
+
+	_rtw_memcpy(phdr, crypt, enc_hdrlen);
+	_rtw_memcpy(pdata, crypt + enc_hdrlen, enc_datalen);
+	
+	rtw_mfree(crypt, enc_hdrlen+enc_datalen+AES_BLOCK_SIZE);
+}
+
+
+#endif

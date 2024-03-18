@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -73,6 +73,9 @@ enum ANDROID_WIFI_CMD {
 	ANDROID_WIFI_CMD_SET_AEK,
 	ANDROID_WIFI_CMD_EXT_AUTH_STATUS,
 	ANDROID_WIFI_CMD_DRIVERVERSION,
+#ifdef ROKU_PRIVATE
+	ANDROID_WIFI_CMD_ROKU_FIND_REMOTE,
+#endif
 	ANDROID_WIFI_CMD_MAX
 };
 
@@ -105,13 +108,6 @@ static inline int rtw_android_wifictrl_func_add(void)
 }
 static inline void rtw_android_wifictrl_func_del(void) {}
 #endif /* defined(RTW_ENABLE_WIFI_CONTROL_FUNC) */
-
-#ifdef CONFIG_GPIO_WAKEUP
-#ifdef CONFIG_PLATFORM_INTEL_BYT
-int wifi_configure_gpio(void);
-#endif /* CONFIG_PLATFORM_INTEL_BYT */
-void wifi_free_gpio(unsigned int gpio);
-#endif /* CONFIG_GPIO_WAKEUP */
 
 
 #endif /* __RTW_ANDROID_H__ */

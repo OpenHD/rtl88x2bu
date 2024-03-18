@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -86,14 +86,11 @@
 		_lock	lock;
 	};
 
-	typedef	struct mbuf _pkt;
 	typedef struct mbuf	_buffer;
 	
 	typedef struct	__queue	_queue;
 	typedef struct	list_head	_list;
-	typedef	int	_OS_STATUS;
-	//typedef u32	_irqL;
-	typedef unsigned long _irqL;
+
 	typedef	struct	ifnet * _nic_hdl;
 	
 	typedef pid_t		_thread_hdl_;
@@ -112,14 +109,198 @@
 
 #define WIRELESS_EXT -1
 #define HZ hz
-#define spin_lock_irqsave mtx_lock_irqsave
-#define spin_lock_bh mtx_lock_irqsave
-#define mtx_lock_irqsave(lock, x) mtx_lock(lock)//{local_irq_save((x)); mtx_lock_spin((lock));}
+
 //#define IFT_RTW	0xf9 //ifnet allocate type for RTW
 #define free_netdev if_free
 #define LIST_CONTAINOR(ptr, type, member) \
         ((type *)((char *)(ptr)-(SIZE_T)(&((type *)0)->member)))
 #define container_of(p,t,n) (t*)((p)-&(((t*)0)->n))
+
+/*lock - spinlock*/
+static inline void _rtw_spinlock_init(_lock *plock)
+{
+	mtx_init(plock, "", NULL, MTX_DEF | MTX_RECURSE);
+}
+
+static inline void _rtw_spinlock_free(_lock *plock)
+{
+	mtx_destroy(plock);
+}
+
+static inline void _rtw_spinlock(_lock	*plock)
+{
+	mtx_lock(plock);
+}
+
+static inline void _rtw_spinunlock(_lock *plock)
+{
+	mtx_unlock(plock);
+}
+
+#if 0
+static inline void _rtw_spinlock_ex(_lock *plock)
+{
+	mtx_lock(plock);
+}
+
+static inline void _rtw_spinunlock_ex(_lock *plock)
+{
+	mtx_unlock(plock);
+}
+#endif
+
+__inline static void _rtw_spinlock_irq(_lock *plock, unsigned long *flags)
+{
+	mtx_lock(plock); /*{local_irq_save((x)); mtx_lock_spin((lock));}*/
+}
+
+__inline static void _rtw_spinunlock_irq(_lock *plock, unsigned long *flags)
+{
+	mtx_unlock(plock);
+}
+
+__inline static void _rtw_spinlock_bh(_lock *plock)
+{
+	mtx_lock(plock);/*{local_irq_save((x)); mtx_lock_spin((lock));}*/
+}
+
+__inline static void _rtw_spinunlock_bh(_lock *plock)
+{
+	mtx_unlock(plock);
+}
+
+/*lock - semaphore*/
+static inline void _rtw_init_sema(_sema *sema, int init_val)
+{
+	sema_init(sema, init_val, "rtw_drv");
+}
+
+static inline void _rtw_free_sema(_sema *sema)
+{
+	sema_destroy(sema);
+}
+
+static inline void _rtw_up_sema(_sema *sema)
+{
+	sema_post(sema);
+}
+
+static inline u32 _rtw_down_sema(_sema *sema)
+{
+	sema_wait(sema);
+	return  _SUCCESS;
+}
+
+/*lock - mutex*/
+static inline void _rtw_mutex_init(_mutex *pmutex)
+{
+	mtx_init(pmutex, "", NULL, MTX_DEF | MTX_RECURSE);
+}
+
+static inline void _rtw_mutex_free(_mutex *pmutex)
+{
+	sema_destroy(pmutex);
+}
+
+__inline static void _rtw_mutex_lock_interruptible(_mutex *pmutex)
+{
+
+	mtx_lock(pmutex);
+
+}
+__inline static void _rtw_mutex_lock(_mutex *pmutex)
+{
+
+	mtx_lock(pmutex);
+
+}
+
+__inline static void _rtw_mutex_unlock(_mutex *pmutex)
+{
+	mtx_unlock(pmutex);
+}
+
+static inline void *_rtw_vmalloc(u32 sz)
+{
+	void *pbuf;
+	pbuf = malloc(sz, M_DEVBUF, M_NOWAIT);
+
+	return pbuf;
+}
+
+static inline void *_rtw_zvmalloc(u32 sz)
+{
+	void *pbuf;
+
+	pbuf = malloc(sz, M_DEVBUF, M_ZERO | M_NOWAIT);
+	return pbuf;
+}
+
+static inline void _rtw_vmfree(void *pbuf, u32 sz)
+{
+	free(pbuf, M_DEVBUF);
+}
+
+static inline void *_rtw_malloc(u32 sz)
+{
+	void *pbuf = NULL;
+
+	pbuf = malloc(sz, M_DEVBUF, M_NOWAIT);
+	return pbuf;
+}
+static inline void *_rtw_zmalloc(u32 sz)
+{
+	return malloc(sz, M_DEVBUF, M_ZERO | M_NOWAIT);
+}
+static inline void _rtw_mfree(void *pbuf, u32 sz)
+{
+	free(pbuf, M_DEVBUF);
+}
+#ifdef CONFIG_USB_HCI
+static inline void *_rtw_usb_buffer_alloc(struct usb_device *dev, size_t size, dma_addr_t *dma)
+{
+	return malloc(size, M_USBDEV, M_NOWAIT | M_ZERO);
+}
+static inline void _rtw_usb_buffer_free(struct usb_device *dev, size_t size, void *addr, dma_addr_t dma)
+{
+	free(addr, M_USBDEV);
+}
+#endif /* CONFIG_USB_HCI */
+
+struct sk_buff *_rtw_skb_alloc(u32 sz);
+void _rtw_skb_free(struct sk_buff *skb);
+static inline struct sk_buff *_rtw_skb_copy(const struct sk_buff *skb)
+{
+	return NULL;
+}
+
+static inline struct sk_buff *_rtw_skb_clone(struct sk_buff *skb)
+{
+	return skb_clone(skb);
+}
+
+static inline int _rtw_netif_rx(_nic_hdl ndev, struct sk_buff *skb)
+{
+	return (*ndev->if_input)(ndev, skb);
+}
+
+#ifdef CONFIG_RTW_NAPI
+static inline int _rtw_netif_receive_skb(_nic_hdl ndev, struct sk_buff *skb)
+{
+	rtw_warn_on(1);
+	return -1;
+}
+
+#ifdef CONFIG_RTW_GRO
+static inline gro_result_t _rtw_napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
+{
+	rtw_warn_on(1);
+	return -1;
+}
+#endif /* CONFIG_RTW_GRO */
+#endif /* CONFIG_RTW_NAPI */
+
+
 /* 
  * Linux timers are emulated using FreeBSD callout functions
  * (and taskqueue functionality).
@@ -151,10 +332,6 @@ struct work_struct {
         work_state_t state; /* the pending or otherwise state of work. */
         work_func_t func;       
 };
-#define spin_unlock_irqrestore mtx_unlock_irqrestore
-#define spin_unlock_bh mtx_unlock_irqrestore
-#define mtx_unlock_irqrestore(lock,x)    mtx_unlock(lock);
-extern void	_rtw_spinlock_init(_lock *plock);
 
 //modify private structure to match freebsd
 #define BITS_PER_LONG 32
@@ -338,7 +515,7 @@ struct sk_buff {
 	unsigned char		*head,
 				*data;
 	unsigned int		truesize;
-	atomic_t		users;
+	ATOMIC_T		users;
 };
 struct sk_buff_head {
 	/* These two members must be first. */
@@ -367,11 +544,7 @@ static inline unsigned char *__skb_pull(struct sk_buff *skb, unsigned int len)
 }
 static inline unsigned char *skb_pull(struct sk_buff *skb, unsigned int len)
 {
-	#ifdef PLATFORM_FREEBSD
 	return __skb_pull(skb, len);
-	#else
-	return unlikely(len > skb->len) ? NULL : __skb_pull(skb, len);
-	#endif //PLATFORM_FREEBSD
 }
 static inline u32 skb_queue_len(const struct sk_buff_head *list_)
 {
@@ -453,6 +626,16 @@ static inline void skb_queue_head_init(struct sk_buff_head *list)
 	_rtw_spinlock_init(&list->lock);
 	__skb_queue_head_init(list);
 }
+static inline u8 *rtw_skb_data(struct sk_buff *pkt)
+{
+	return pkt->data;
+}
+
+static inline u32 rtw_skb_len(struct sk_buff *pkt)
+{
+	return pkt->len;
+}
+
 unsigned long copy_from_user(void *to, const void *from, unsigned long n);
 unsigned long copy_to_user(void *to, const void *from, unsigned long n);
 struct sk_buff * dev_alloc_skb(unsigned int size);
@@ -535,7 +718,7 @@ struct urb *rtw_usb_alloc_urb(uint16_t iso_packets, uint16_t mem_flags);
 struct usb_host_endpoint *rtw_usb_find_host_endpoint(struct usb_device *dev, uint8_t type, uint8_t ep);
 struct usb_host_interface *rtw_usb_altnum_to_altsetting(const struct usb_interface *intf, uint8_t alt_index);
 struct usb_interface *rtw_usb_ifnum_to_if(struct usb_device *dev, uint8_t iface_no);
-void *rtw_usbd_get_intfdata(struct usb_interface *intf);
+void *rtw_usb_get_intfdata(struct usb_interface *intf);
 void rtw_usb_linux_register(void *arg);
 void rtw_usb_linux_deregister(void *arg);
 void rtw_usb_linux_free_device(struct usb_device *dev);
@@ -600,50 +783,6 @@ __inline static _list	*get_list_head(_queue	*queue)
         ((type *)((char *)(ptr)-(SIZE_T)(&((type *)0)->member)))	
 
         
-__inline static void _enter_critical(_lock *plock, _irqL *pirqL)
-{
-	spin_lock_irqsave(plock, *pirqL);
-}
-
-__inline static void _exit_critical(_lock *plock, _irqL *pirqL)
-{
-	spin_unlock_irqrestore(plock, *pirqL);
-}
-
-__inline static void _enter_critical_ex(_lock *plock, _irqL *pirqL)
-{
-	spin_lock_irqsave(plock, *pirqL);
-}
-
-__inline static void _exit_critical_ex(_lock *plock, _irqL *pirqL)
-{
-	spin_unlock_irqrestore(plock, *pirqL);
-}
-
-__inline static void _enter_critical_bh(_lock *plock, _irqL *pirqL)
-{
-	spin_lock_bh(plock, *pirqL);
-}
-
-__inline static void _exit_critical_bh(_lock *plock, _irqL *pirqL)
-{
-	spin_unlock_bh(plock, *pirqL);
-}
-
-__inline static void _enter_critical_mutex(_mutex *pmutex, _irqL *pirqL)
-{
-
-		mtx_lock(pmutex);
-
-}
-
-
-__inline static void _exit_critical_mutex(_mutex *pmutex, _irqL *pirqL)
-{
-
-		mtx_unlock(pmutex);
-
-}
 static inline void __list_del(struct list_head * prev, struct list_head * next)
 {
 	next->prev = prev;
@@ -684,7 +823,7 @@ static inline void timer_hdl(void *ctx)
 	rtw_mtx_unlock(NULL);
 }
 
-static inline void _init_timer(_timer *ptimer, _nic_hdl padapter, void *pfunc, void *cntx)
+static inline void _init_timer(_timer *ptimer, void *pfunc, void *cntx)
 {
 	ptimer->function = pfunc;
 	ptimer->arg = cntx;
@@ -731,16 +870,152 @@ __inline static void _set_workitem(_workitem *pwork)
 {                                                               \
 }
 
+/* Atomic integer operations */
+#define ATOMIC_T atomic_t
+
 #define ATOMIC_INIT(i)  { (i) }
+static inline void ATOMIC_SET(ATOMIC_T *v, int i)
+{
+	atomic_set_int(v, i);
+}
 
-static __inline void thread_enter(char *name);
+static inline int ATOMIC_READ(ATOMIC_T *v)
+{
+	return atomic_load_acq_32(v);
+}
 
-//Atomic integer operations
-typedef uint32_t ATOMIC_T ;
+static inline void ATOMIC_ADD(ATOMIC_T *v, int i)
+{
+	atomic_add_int(v, i);
+}
+static inline void ATOMIC_SUB(ATOMIC_T *v, int i)
+{
+	atomic_subtract_int(v, i);
+}
+
+static inline void ATOMIC_INC(ATOMIC_T *v)
+{
+	atomic_add_int(v, 1);
+}
+
+static inline void ATOMIC_DEC(ATOMIC_T *v)
+{
+	atomic_subtract_int(v, 1);
+}
+
+static inline int ATOMIC_ADD_RETURN(ATOMIC_T *v, int i)
+{
+	atomic_add_int(v, i);
+	return atomic_load_acq_32(v);
+}
+
+static inline int ATOMIC_SUB_RETURN(ATOMIC_T *v, int i)
+{
+	atomic_subtract_int(v, i);
+	return atomic_load_acq_32(v);
+}
+
+static inline int ATOMIC_INC_RETURN(ATOMIC_T *v)
+{
+	atomic_add_int(v, 1);
+	return atomic_load_acq_32(v);
+}
+
+static inline int ATOMIC_DEC_RETURN(ATOMIC_T *v)
+{
+	atomic_subtract_int(v, 1);
+	return atomic_load_acq_32(v);
+}
+
+static inline bool ATOMIC_INC_UNLESS(ATOMIC_T *v, int u)
+{
+	#error "TBD\n"
+}
+
+/*task*/
+typedef void (*task_fn_t)(void *context, int pending);
+#if 0 /*taskqueue -- asynchronous task execution*/
+
+TASK_INIT(struct task *task, int priority, task_fn_t func,
+	 void *context);
+
+TASK_INITIALIZER(int priority, task_fn_t func, void *context);
+
+TASKQUEUE_DECLARE(name);
+
+TASKQUEUE_DEFINE(name, taskqueue_enqueue_fn enqueue, void *context,
+	 init);
+
+#endif
+static inline void rtw_tasklet_init(_tasklet *t,task_fn_t func,
+							unsigned long data)
+{
+	TASK_INIT(t, 0, func, padapter);
+}
+static inline void rtw_tasklet_kill(_tasklet *t)
+
+
+}
+
+static inline void rtw_tasklet_schedule(_tasklet *t)
+{
+
+}
+static inline void rtw_tasklet_hi_schedule(_tasklet *t)
+{
+
+}
+
+
+/*thread*/
+static inline void rtw_thread_enter(char *name)
+{
+	printf("%s", "RTKTHREAD_enter");
+}
+
+static inline void rtw_thread_exit(_completion *comp)
+{
+	printf("%s", "RTKTHREAD_exit");
+}
+
+#include <sys/unistd.h>		/* for RFHIGHPID */
+static inline _thread_hdl_ rtw_thread_start(int (*threadfn)(void *data),
+			void *data, const char namefmt[])
+{
+	_thread_hdl_ _rtw_thread = NULL;
+	struct proc *p;
+	struct thread *td;
+
+	_rtw_thread = kproc_kthread_add(mp_xmit_packet_thread, data,
+			&p, &td, RFHIGHPID, 0, namefmt, namefmt);
+
+	if (_rtw_thread < 0)
+		_rtw_thread = NULL;
+	return _rtw_thread;
+}
+
+static inline bool rtw_thread_stop(_thread_hdl_ th)
+{
+	return _FALSE;
+}
+static inline void rtw_thread_wait_stop(void)
+{
+
+}
+__inline static void flush_signals_thread(void)
+{
+
+}
+
+#define rtw_dump_stack(void) do {} while (0)
+#define rtw_bug_on(condition) do {} while (0)
+#define rtw_warn_on(condition) do {} while (0)
+#define rtw_sprintf(buf, size, format, arg...) do {} while (0)
 
 #define rtw_netdev_priv(netdev) (((struct ifnet *)netdev)->if_softc)
-
 #define rtw_free_netdev(netdev) if_free((netdev))
+
+#define RTW_DIV_ROUND_UP(n, d)	(((n) + (d - 1)) / d)
 
 #define NDEV_FMT "%s"
 #define NDEV_ARG(ndev) ""

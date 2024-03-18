@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2015 - 2019 Realtek Corporation.
+ * Copyright(c) 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -37,7 +37,7 @@ static u8 sdio_io(struct dvobj_priv *d, u32 addr, void *buf, size_t len, u8 writ
 {
 #ifdef DBG_SDIO
 #if (DBG_SDIO >= 3)
-	struct sdio_data *sdio;
+	struct sdio_data *sdio = dvobj_to_sdio(d);
 #endif /* DBG_SDIO >= 3 */
 #endif /* DBG_SDIO */
 	u32 addr_drv;	/* address with driver defined bit */
@@ -45,14 +45,7 @@ static u8 sdio_io(struct dvobj_priv *d, u32 addr, void *buf, size_t len, u8 writ
 	u8 retry = 0;
 	u8 stop_retry = _FALSE;	/* flag for stopping retry or not */
 
-
-#ifdef DBG_SDIO
-#if (DBG_SDIO >= 3)
-	sdio = &d->intf_data;
-#endif /* DBG_SDIO >= 3 */
-#endif /* DBG_SDIO */
-
-	if (rtw_is_surprise_removed(dvobj_get_primary_adapter(d))) {
+	if (dev_is_surprise_removed(d)) {
 		RTW_ERR("%s: bSurpriseRemoved, skip %s 0x%05x, %zu bytes\n",
 			__FUNCTION__, write?"write":"read", addr, len);
 		return _FAIL;
@@ -90,7 +83,7 @@ static u8 sdio_io(struct dvobj_priv *d, u32 addr, void *buf, size_t len, u8 writ
 			if (sdio->err_stop) {
 				RTW_ERR("%s: I/O error! Set surprise remove flag ON!\n",
 					__FUNCTION__);
-				rtw_set_surprise_removed(dvobj_get_primary_adapter(d));
+				dev_set_surprise_removed(d);
 				return _FAIL;
 			}
 		}
@@ -103,7 +96,7 @@ static u8 sdio_io(struct dvobj_priv *d, u32 addr, void *buf, size_t len, u8 writ
 			/* critical error, unrecoverable */
 			RTW_ERR("%s: Fatal error! Set surprise remove flag ON! (retry=%u,%u)\n",
 				__FUNCTION__, retry, ATOMIC_READ(&d->continual_io_error));
-			rtw_set_surprise_removed(dvobj_get_primary_adapter(d));
+			dev_set_surprise_removed(d);
 			return _FAIL;
 		}
 
@@ -154,4 +147,28 @@ u8 rtw_sdio_f0_read(struct dvobj_priv *d, u32 addr, void *buf, size_t len)
 		ret = _FAIL;
 
 	return ret;
+}
+
+/**
+ * rtw_sdio_cmd53_align_size() - Align size to one CMD53 could complete
+ * @d		struct dvobj_priv*
+ * @len		length to align
+ *
+ * Adjust len to align block size, and the new size could be transfered by one
+ * CMD53.
+ * If len < block size, it would keep original value, otherwise the value
+ * would be rounded up by block size.
+ *
+ * Return adjusted length.
+ */
+size_t rtw_sdio_cmd53_align_size(struct dvobj_priv *d, size_t len)
+{
+	u32 blk_sz;
+
+
+	blk_sz = rtw_sdio_get_block_size(d);
+	if (len <= blk_sz)
+		return len;
+
+	return _RND(len, blk_sz);
 }

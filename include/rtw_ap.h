@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -30,12 +30,11 @@ u8 rtw_set_tim_ie(u8 dtim_cnt, u8 dtim_period
 /* void update_BCNTIM(_adapter *padapter); */
 void rtw_add_bcn_ie(_adapter *padapter, WLAN_BSSID_EX *pnetwork, u8 index, u8 *data, u8 len);
 void rtw_remove_bcn_ie(_adapter *padapter, WLAN_BSSID_EX *pnetwork, u8 index);
+void rtw_remove_bcn_ie_ex(_adapter *padapter, WLAN_BSSID_EX *pnetwork, u8 index, u8* pindex_ex, u8 index_ex_len);
 void _update_beacon(_adapter *padapter, u8 ie_id, u8 *oui, u8 tx, u8 flags, const char *tag);
-#define update_beacon(adapter, ie_id, oui, tx, flags) _update_beacon((adapter), (ie_id), (oui), (tx), (flags), __func__)
-/*update_beacon - (flags) can set to normal enqueue (0) and RTW_CMDF_WAIT_ACK enqueue. 
+#define rtw_update_beacon(adapter, ie_id, oui, tx, flags) _update_beacon((adapter), (ie_id), (oui), (tx), (flags), __func__)
+/*rtw_update_beacon - (flags) can set to normal enqueue (0) and RTW_CMDF_WAIT_ACK enqueue. 
  (flags) = RTW_CMDF_DIRECTLY  is not currently implemented, it will do normal enqueue.*/
-
-void rtw_ap_update_sta_ra_info(_adapter *padapter, struct sta_info *psta);
 
 void expire_timeout_chk(_adapter *padapter);
 void update_sta_info_apmode(_adapter *padapter, struct sta_info *psta);
@@ -63,17 +62,17 @@ void associated_clients_update(_adapter *padapter, u8 updated, u32 sta_info_type
 void bss_cap_update_on_sta_join(_adapter *padapter, struct sta_info *psta);
 u8 bss_cap_update_on_sta_leave(_adapter *padapter, struct sta_info *psta);
 void sta_info_update(_adapter *padapter, struct sta_info *psta);
-void ap_sta_info_defer_update(_adapter *padapter, struct sta_info *psta);
-u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reason, bool enqueue);
+u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reason, bool enqueue, u8 disassoc);
 int rtw_sta_flush(_adapter *padapter, bool enqueue);
 int rtw_ap_inform_ch_switch(_adapter *padapter, u8 new_ch, u8 ch_offset);
 void start_ap_mode(_adapter *padapter);
 void stop_ap_mode(_adapter *padapter);
 #endif
 
+void rtw_ap_update_clients_rainfo(struct _ADAPTER *a, enum phl_cmd_type flag);
 void rtw_ap_update_bss_chbw(_adapter *adapter, WLAN_BSSID_EX *bss, u8 ch, u8 bw, u8 offset);
 u8 rtw_ap_chbw_decision(_adapter *adapter, u8 ifbmp, u8 excl_ifbmp
-	, s16 req_ch, s8 req_bw, s8 req_offset, u8 *ch, u8 *bw, u8 *offset, u8 *chbw_allow, bool *set_u_ch);
+	, s16 req_ch, s8 req_bw, s8 req_offset, struct rtw_chan_def *chdef);
 
 #ifdef CONFIG_AUTO_AP_MODE
 void rtw_auto_ap_rx_msg_dump(_adapter *padapter, union recv_frame *precv_frame, u8 *ehdr_pos);
@@ -86,7 +85,12 @@ u16 rtw_ap_parse_sta_security_ie(_adapter *adapter, struct sta_info *sta, struct
 void rtw_ap_parse_sta_wmm_ie(_adapter *adapter, struct sta_info *sta, u8 *tlv_ies, u16 tlv_ies_len);
 void rtw_ap_parse_sta_ht_ie(_adapter *adapter, struct sta_info *sta, struct rtw_ieee802_11_elems *elems);
 void rtw_ap_parse_sta_vht_ie(_adapter *adapter, struct sta_info *sta, struct rtw_ieee802_11_elems *elems);
+void rtw_ap_parse_sta_he_ie(_adapter *adapter, struct sta_info *sta, struct rtw_ieee802_11_elems *elems);
 void rtw_ap_parse_sta_multi_ap_ie(_adapter *adapter, struct sta_info *sta, u8 *ies, int ies_len);
+
+
+void rtw_core_ap_start(_adapter *padapter, struct createbss_parm *parm);
+void rtw_core_ap_swch_start(_adapter *padapter, struct createbss_parm *parm);
 
 /* b2u flags */
 #define RTW_AP_B2U_ALL		BIT0
@@ -109,14 +113,12 @@ void rtw_ap_parse_sta_multi_ap_ie(_adapter *adapter, struct sta_info *sta, u8 *i
 
 void dump_ap_b2u_flags(void *sel, _adapter *adapter);
 
-int rtw_ap_addr_resolve(_adapter *adapter, u16 os_qid, struct xmit_frame *xframe, _pkt *pkt, _list *b2u_list);
+int rtw_ap_addr_resolve(_adapter *adapter, u16 os_qid, struct xmit_frame *xframe, struct sk_buff *pkt, _list *f_list);
 int rtw_ap_rx_data_validate_hdr(_adapter *adapter, union recv_frame *rframe, struct sta_info **sta);
 int rtw_ap_rx_msdu_act_check(union recv_frame *rframe
 	, const u8 *da, const u8 *sa
 	, u8 *msdu, enum rtw_rx_llc_hdl llc_hdl
-	, struct xmit_frame **fwd_frame, _list *b2u_list);
-
-void update_bmc_sta(_adapter *padapter);
+	, struct xmit_frame **fwd_frame, _list *f_list);
 
 #ifdef CONFIG_BMC_TX_RATE_SELECT
 void rtw_update_bmc_sta_tx_rate(_adapter *adapter);
@@ -129,15 +131,24 @@ int rtw_ht_operation_update(_adapter *padapter);
 #endif /* CONFIG_80211N_HT */
 u8 rtw_ap_sta_states_check(_adapter *adapter);
 
-#ifdef CONFIG_FW_HANDLE_TXBCN
-#define rtw_ap_get_nums(adapter)	(adapter_to_dvobj(adapter)->nr_ap_if)
-bool rtw_ap_nums_check(_adapter *adapter);
+void rtw_ap_set_sta_wmode(_adapter *padapter, struct sta_info *sta);
+
+#if defined(CONFIG_RTW_ACS) && defined(WKARD_ACS)
+void rtw_acs_start(_adapter *padapter);
+void rtw_acs_stop(_adapter *padapter);
+#endif /* defined(CONFIG_RTW_ACS) && defined(WKARD_ACS) */
+void rtw_ap_set_edca(_adapter *padapter, enum rtw_ac ac, u32 param);
+
+#ifdef CONFIG_AP_CMD_DISPR
+
+#define CMD_APSTART_ACQUIRE BIT0
+#define CMD_APSTOP_ACQUIRE BIT1
+#define	CMD_APSTOP_STARTED BIT2
+
+enum rtw_phl_status rtw_ap_start_cmd(struct cmd_obj *p);
+enum rtw_phl_status rtw_ap_stop_cmd(struct cmd_obj *p);
+enum rtw_phl_status rtw_free_bcn_entry(struct _ADAPTER *padapter);
+
 #endif
-
-#ifdef CONFIG_SWTIMER_BASED_TXBCN
-void tx_beacon_handlder(struct dvobj_priv *pdvobj);
-void tx_beacon_timer_handlder(void *ctx);
-#endif /*CONFIG_SWTIMER_BASED_TXBCN*/
-
 #endif /* end of CONFIG_AP_MODE */
 #endif /*__RTW_AP_H_*/

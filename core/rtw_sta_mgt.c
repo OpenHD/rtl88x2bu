@@ -36,11 +36,10 @@ inline void rtw_st_ctl_init(struct st_ctl_t *st_ctl)
 
 inline void rtw_st_ctl_clear_tracker_q(struct st_ctl_t *st_ctl)
 {
-	_irqL irqL;
 	_list *plist, *phead;
 	struct session_tracker *st;
 
-	_enter_critical_bh(&st_ctl->tracker_q.lock, &irqL);
+	_rtw_spinlock_bh(&st_ctl->tracker_q.lock);
 	phead = &st_ctl->tracker_q.queue;
 	plist = get_next(phead);
 	while (rtw_end_of_queue_search(phead, plist) == _FALSE) {
@@ -49,7 +48,7 @@ inline void rtw_st_ctl_clear_tracker_q(struct st_ctl_t *st_ctl)
 		rtw_list_delete(&st->list);
 		rtw_mfree((u8 *)st, sizeof(struct session_tracker));
 	}
-	_exit_critical_bh(&st_ctl->tracker_q.lock, &irqL);
+	_rtw_spinunlock_bh(&st_ctl->tracker_q.lock);
 }
 
 inline void rtw_st_ctl_deinit(struct st_ctl_t *st_ctl)
@@ -167,7 +166,6 @@ void rtw_st_ctl_rx(struct sta_info *sta, u8 *ehdr_pos)
 void dump_st_ctl(void *sel, struct st_ctl_t *st_ctl)
 {
 	int i;
-	_irqL irqL;
 	_list *plist, *phead;
 	struct session_tracker *st;
 
@@ -177,7 +175,7 @@ void dump_st_ctl(void *sel, struct st_ctl_t *st_ctl)
 	for (i = 0; i < SESSION_TRACKER_REG_ID_NUM; i++)
 		RTW_PRINT_SEL(sel, "reg%d: %u %p\n", i, st_ctl->reg[i].s_proto, st_ctl->reg[i].rule);
 
-	_enter_critical_bh(&st_ctl->tracker_q.lock, &irqL);
+	_rtw_spinlock_bh(&st_ctl->tracker_q.lock);
 	phead = &st_ctl->tracker_q.queue;
 	plist = get_next(phead);
 	while (rtw_end_of_queue_search(phead, plist) == _FALSE) {
@@ -186,7 +184,7 @@ void dump_st_ctl(void *sel, struct st_ctl_t *st_ctl)
 
 		RTW_PRINT_SEL(sel, SESSION_TRACKER_FMT"\n", SESSION_TRACKER_ARG(st));
 	}
-	_exit_critical_bh(&st_ctl->tracker_q.lock, &irqL);
+	_rtw_spinunlock_bh(&st_ctl->tracker_q.lock);
 
 }
 
@@ -203,9 +201,7 @@ void _rtw_init_stainfo(struct sta_info *psta)
 	/* _rtw_init_listhead(&psta->wakeup_list);	 */
 
 	_rtw_init_queue(&psta->sleep_q);
-#ifdef CONFIG_RTW_MGMT_QUEUE
-	_rtw_init_queue(&psta->mgmt_sleep_q);
-#endif
+
 	_rtw_init_sta_xmit_priv(&psta->sta_xmitpriv);
 	_rtw_init_sta_recv_priv(&psta->sta_recvpriv);
 
@@ -214,6 +210,9 @@ void _rtw_init_stainfo(struct sta_info *psta)
 	_rtw_init_listhead(&psta->auth_list);
 	psta->bpairwise_key_installed = _FALSE;
 
+#ifdef CONFIG_RTW_80211R_AP
+	rtw_ft_peer_info_init(psta);
+#endif
 #ifdef CONFIG_RTW_80211R
 	psta->ft_pairwise_key_installed = _FALSE;
 #endif
@@ -225,7 +224,7 @@ void _rtw_init_stainfo(struct sta_info *psta)
 u32	_rtw_init_sta_priv(struct	sta_priv *pstapriv)
 {
 	_adapter *adapter = container_of(pstapriv, _adapter, stapriv);
-	struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter);
+	/* struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter); */
 	struct sta_info *psta;
 	s32 i;
 	u32 ret = _FAIL;
@@ -267,7 +266,8 @@ u32	_rtw_init_sta_priv(struct	sta_priv *pstapriv)
 	pstapriv->adhoc_expire_to = 4; /* 4 * 2 = 8 sec */
 
 #ifdef CONFIG_AP_MODE
-	pstapriv->max_aid = macid_ctl->num;
+	pstapriv->max_aid = rtw_phl_get_macid_max_num(
+				GET_PHL_INFO(adapter_to_dvobj(pstapriv->padapter)));
 	pstapriv->rr_aid = 0;
 	pstapriv->started_aid = 1;
 	pstapriv->sta_aid = rtw_zmalloc(pstapriv->max_aid * sizeof(struct sta_info *));
@@ -305,17 +305,18 @@ u32	_rtw_init_sta_priv(struct	sta_priv *pstapriv)
 #endif
 	pstapriv->max_num_sta = NUM_STA;
 
+#endif
+
 #if CONFIG_RTW_MACADDR_ACL
 	for (i = 0; i < RTW_ACL_PERIOD_NUM; i++)
 		rtw_macaddr_acl_init(adapter, i);
 #endif
-#endif /* CONFIG_AP_MODE */
 
 #if CONFIG_RTW_PRE_LINK_STA
 	rtw_pre_link_sta_ctl_init(pstapriv);
 #endif
 
-#if defined(DBG_ROAMING_TEST) || defined(CONFIG_RTW_REPEATER_SON)
+#if defined(DBG_ROAMING_TEST)
 	rtw_set_rx_chk_limit(adapter,1);
 #elif defined(CONFIG_ACTIVE_KEEP_ALIVE_CHECK) && !defined(CONFIG_LPS_LCLK_WD_TIMER)
 	rtw_set_rx_chk_limit(adapter,4);
@@ -369,9 +370,6 @@ void	_rtw_free_sta_xmit_priv_lock(struct sta_xmit_priv *psta_xmitpriv)
 	_rtw_spinlock_free(&(psta_xmitpriv->bk_q.sta_pending.lock));
 	_rtw_spinlock_free(&(psta_xmitpriv->vi_q.sta_pending.lock));
 	_rtw_spinlock_free(&(psta_xmitpriv->vo_q.sta_pending.lock));
-#ifdef CONFIG_RTW_MGMT_QUEUE
-	_rtw_spinlock_free(&(psta_xmitpriv->mgmt_q.sta_pending.lock));
-#endif
 }
 
 static void	_rtw_free_sta_recv_priv_lock(struct sta_recv_priv *psta_recvpriv)
@@ -388,7 +386,7 @@ void rtw_mfree_stainfo(struct sta_info *psta);
 void rtw_mfree_stainfo(struct sta_info *psta)
 {
 
-	if (&(psta->lock) != NULL)
+	if (&psta->lock != NULL)
 		_rtw_spinlock_free(&psta->lock);
 
 	_rtw_free_sta_xmit_priv_lock(&psta->sta_xmitpriv);
@@ -401,12 +399,11 @@ void rtw_mfree_stainfo(struct sta_info *psta)
 void rtw_mfree_all_stainfo(struct sta_priv *pstapriv);
 void rtw_mfree_all_stainfo(struct sta_priv *pstapriv)
 {
-	_irqL	 irqL;
 	_list	*plist, *phead;
 	struct sta_info *psta = NULL;
 
 
-	_enter_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+	_rtw_spinlock_bh(&pstapriv->sta_hash_lock);
 
 	phead = get_list_head(&pstapriv->free_sta_queue);
 	plist = get_next(phead);
@@ -418,7 +415,7 @@ void rtw_mfree_all_stainfo(struct sta_priv *pstapriv)
 		rtw_mfree_stainfo(psta);
 	}
 
-	_exit_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+	_rtw_spinunlock_bh(&pstapriv->sta_hash_lock);
 
 
 }
@@ -443,16 +440,16 @@ void rtw_mfree_sta_priv_lock(struct	sta_priv *pstapriv)
 
 u32	_rtw_free_sta_priv(struct	sta_priv *pstapriv)
 {
-	_irqL	irqL;
-	_list	*phead, *plist;
-	struct sta_info *psta = NULL;
-	struct recv_reorder_ctrl *preorder_ctrl;
 	int	index;
 
 	if (pstapriv) {
+		#ifdef CONFIG_RECV_REORDERING_CTRL
+		_list	*phead, *plist;
+		struct sta_info *psta = NULL;
+		struct recv_reorder_ctrl *preorder_ctrl;
 
 		/*	delete all reordering_ctrl_timer		*/
-		_enter_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+		_rtw_spinlock_bh(&pstapriv->sta_hash_lock);
 		for (index = 0; index < NUM_STA; index++) {
 			phead = &(pstapriv->sta_hash[index]);
 			plist = get_next(phead);
@@ -468,8 +465,9 @@ u32	_rtw_free_sta_priv(struct	sta_priv *pstapriv)
 				}
 			}
 		}
-		_exit_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+		_rtw_spinunlock_bh(&pstapriv->sta_hash_lock);
 		/*===============================*/
+		#endif
 
 		rtw_mfree_sta_priv_lock(pstapriv);
 
@@ -498,51 +496,63 @@ u32	_rtw_free_sta_priv(struct	sta_priv *pstapriv)
 	return _SUCCESS;
 }
 
-
+#if defined(CONFIG_80211N_HT) && defined(CONFIG_RECV_REORDERING_CTRL)
 static void rtw_init_recv_timer(struct recv_reorder_ctrl *preorder_ctrl)
 {
 	_adapter *padapter = preorder_ctrl->padapter;
 
-#if defined(CONFIG_80211N_HT) && defined(CONFIG_RECV_REORDERING_CTRL)
-	rtw_init_timer(&(preorder_ctrl->reordering_ctrl_timer), padapter, rtw_reordering_ctrl_timeout_handler, preorder_ctrl);
-#endif
+	rtw_init_timer(&(preorder_ctrl->reordering_ctrl_timer), rtw_reordering_ctrl_timeout_handler, preorder_ctrl);
 }
+#endif
 
 /* struct	sta_info *rtw_alloc_stainfo(_queue *pfree_sta_queue, unsigned char *hwaddr) */
-struct	sta_info *rtw_alloc_stainfo(struct	sta_priv *pstapriv, const u8 *hwaddr)
+static struct sta_info *_rtw_alloc_core_stainfo(struct sta_priv *pstapriv,
+													const u8 *hwaddr)
 {
-	_irqL irqL2;
 	s32	index;
 	_list	*phash_list;
-	struct sta_info	*psta;
+	struct sta_info *psta;
 	_queue *pfree_sta_queue;
 	struct recv_reorder_ctrl *preorder_ctrl;
+	struct rtw_wifi_role_t *phl_role = pstapriv->padapter->phl_role;
 	int i = 0;
 	u16  wRxSeqInitialValue = 0xffff;
 
 
 	pfree_sta_queue = &pstapriv->free_sta_queue;
 
-	/* _enter_critical_bh(&(pfree_sta_queue->lock), &irqL); */
-	_enter_critical_bh(&(pstapriv->sta_hash_lock), &irqL2);
+	/* _rtw_spinlock_bh(&(pfree_sta_queue->lock)); */
+	_rtw_spinlock_bh(&(pstapriv->sta_hash_lock));
 	if (_rtw_queue_empty(pfree_sta_queue) == _TRUE) {
-		/* _exit_critical_bh(&(pfree_sta_queue->lock), &irqL); */
-		/* _exit_critical_bh(&(pstapriv->sta_hash_lock), &irqL2); */
+		/* _rtw_spinunlock_bh(&(pstapriv->sta_hash_lock));*/
+
 		psta = NULL;
 	} else {
 		psta = LIST_CONTAINOR(get_next(&pfree_sta_queue->queue), struct sta_info, list);
 
 		rtw_list_delete(&(psta->list));
 
-		/* _exit_critical_bh(&(pfree_sta_queue->lock), &irqL); */
+		/* _rtw_spinunlock_bh(&(pfree_sta_queue->lock)); */
 		_rtw_init_stainfo(psta);
 
 		psta->padapter = pstapriv->padapter;
 
-		_rtw_memcpy(psta->cmn.mac_addr, hwaddr, ETH_ALEN);
-
-		index = wifi_mac_hash(hwaddr);
-
+		/*
+		for sta mode, due to self sta info & AP sta info are the same sta info
+		using self hash index for sta mode, or bmc sta will not found self sta
+		*/
+		switch (phl_role->type) {
+		case PHL_RTYPE_NONE:
+		case PHL_RTYPE_STATION:
+		case PHL_RTYPE_ADHOC:
+		case PHL_RTYPE_P2P_DEVICE:
+		case PHL_RTYPE_P2P_GC:
+			index = wifi_mac_hash(phl_role->mac_addr);
+			break;
+		default:
+			index = wifi_mac_hash(hwaddr);
+			break;
+		}
 
 		if (index >= NUM_STA) {
 			psta = NULL;
@@ -550,13 +560,13 @@ struct	sta_info *rtw_alloc_stainfo(struct	sta_priv *pstapriv, const u8 *hwaddr)
 		}
 		phash_list = &(pstapriv->sta_hash[index]);
 
-		/* _enter_critical_bh(&(pstapriv->sta_hash_lock), &irqL2); */
+		/* _rtw_spinlock_bh(&(pstapriv->sta_hash_lock)); */
 
 		rtw_list_insert_tail(&psta->hash_list, phash_list);
 
 		pstapriv->asoc_sta_count++;
 
-		/* _exit_critical_bh(&(pstapriv->sta_hash_lock), &irqL2); */
+		/* _rtw_spinunlock_bh(&(pstapriv->sta_hash_lock)); */
 
 		/* Commented by Albert 2009/08/13
 		 * For the SMC router, the sequence number of first packet of WPS handshake will be 0.
@@ -568,12 +578,10 @@ struct	sta_info *rtw_alloc_stainfo(struct	sta_priv *pstapriv, const u8 *hwaddr)
 			_rtw_memcpy(&psta->sta_recvpriv.bmc_tid_rxseq[i], &wRxSeqInitialValue, 2);
 			_rtw_memset(&psta->sta_recvpriv.rxcache.iv[i], 0, sizeof(psta->sta_recvpriv.rxcache.iv[i]));
 		}
-		_rtw_memcpy(&psta->sta_recvpriv.nonqos_bmc_rxseq,&wRxSeqInitialValue,2);
-		_rtw_memcpy(&psta->sta_recvpriv.nonqos_rxseq,&wRxSeqInitialValue,2);
 
-		rtw_init_timer(&psta->addba_retry_timer, psta->padapter, addba_timer_hdl, psta);
+		rtw_init_timer(&psta->addba_retry_timer, addba_timer_hdl, psta);
 #ifdef CONFIG_IEEE80211W
-		rtw_init_timer(&psta->dot11w_expire_timer, psta->padapter, sa_query_timer_hdl, psta);
+		rtw_init_timer(&psta->dot11w_expire_timer, sa_query_timer_hdl, psta);
 #endif /* CONFIG_IEEE80211W */
 #ifdef CONFIG_TDLS
 		rtw_init_tdls_timer(pstapriv->padapter, psta);
@@ -590,22 +598,26 @@ struct	sta_info *rtw_alloc_stainfo(struct	sta_priv *pstapriv, const u8 *hwaddr)
 			RTW_INFO("DBG_RX_SEQ "FUNC_ADPT_FMT" tid:%u SN_CLEAR indicate_seq:%d\n"
 				, FUNC_ADPT_ARG(pstapriv->padapter), i, preorder_ctrl->indicate_seq);
 			#endif
-			preorder_ctrl->wend_b = 0xffff;
-			preorder_ctrl->wsize_b = 64;/* 64; */
+
 			preorder_ctrl->ampdu_size = RX_AMPDU_SIZE_INVALID;
 
+			#ifdef CONFIG_RECV_REORDERING_CTRL
+			/* preorder_ctrl->wsize_b = (NR_RECVBUFF-2); */
+			preorder_ctrl->wsize_b = 64;/* 64; */
 			_rtw_init_queue(&preorder_ctrl->pending_recvframe_queue);
 
 			rtw_init_recv_timer(preorder_ctrl);
+			#endif
 			rtw_clear_bit(RTW_RECV_ACK_OR_TIMEOUT, &preorder_ctrl->rec_abba_rsp_ack);
 
 		}
 		ATOMIC_SET(&psta->keytrack, 0);
-
-		/* init for DM */
-		psta->cmn.rssi_stat.rssi = (-1);
-		psta->cmn.rssi_stat.rssi_cck = (-1);
-		psta->cmn.rssi_stat.rssi_ofdm = (-1);
+		/* ToDo: need to API to init hal_sta->ra_info->rssi_stat.rssi  */
+		#if 0
+		psta->phl_sta->rssi_stat.rssi = (-1);
+		psta->phl_sta->rssi_stat.rssi_cck = (-1);
+		psta->phl_sta->rssi_stat.rssi_ofdm = (-1);
+		#endif
 #ifdef CONFIG_ATMEL_RC_PATCH
 		psta->flag_atmel_rc = 0;
 #endif
@@ -617,8 +629,6 @@ struct	sta_info *rtw_alloc_stainfo(struct	sta_priv *pstapriv, const u8 *hwaddr)
 		psta->RxMgmtFrameSeqNum = 0xffff;
 		_rtw_memset(&psta->sta_stats, 0, sizeof(struct stainfo_stats));
 
-		rtw_alloc_macid(pstapriv->padapter, psta);
-
 		psta->tx_q_enable = 0;
 		_rtw_init_queue(&psta->tx_queue);
 		_init_workitem(&psta->tx_q_work, rtw_xmit_dequeue_callback, NULL);
@@ -626,7 +636,7 @@ struct	sta_info *rtw_alloc_stainfo(struct	sta_priv *pstapriv, const u8 *hwaddr)
 
 exit:
 
-	_exit_critical_bh(&(pstapriv->sta_hash_lock), &irqL2);
+	_rtw_spinunlock_bh(&(pstapriv->sta_hash_lock));
 
 
 	if (psta)
@@ -635,13 +645,89 @@ exit:
 	return psta;
 }
 
+static void _rtw_alloc_phl_stainfo(struct sta_info *sta, struct	sta_priv *stapriv, const u8 *hwaddr)
+{
+		enum rtw_phl_status pstatus = RTW_PHL_STATUS_SUCCESS;
+		void *phl = GET_PHL_INFO(adapter_to_dvobj(stapriv->padapter));
+		struct rtw_wifi_role_t *wrole = stapriv->padapter->phl_role;
+		bool alloc = _TRUE, only_hw = _FALSE;
+
+	if (sta != NULL) {
+		/* Do not use this function in interrupt context  */
+		pstatus = rtw_phl_cmd_alloc_stainfo(phl, &sta->phl_sta,
+										(u8 *)hwaddr, wrole,
+										alloc, only_hw,
+										PHL_CMD_DIRECTLY, 0);
+
+		if (sta->phl_sta) {
+			rtw_dump_phl_sta_info(RTW_DBGDUMP, sta);
+		} else {
+			RTW_ERR(FUNC_ADPT_FMT ": fail to alloc PHL sta "
+				"for " MAC_FMT " (status=%d)!\n",
+				FUNC_ADPT_ARG(stapriv->padapter),
+				MAC_ARG(hwaddr),
+				pstatus);
+		}
+	}
+}
+
+struct sta_info *rtw_alloc_stainfo(struct	sta_priv *stapriv, const u8 *hwaddr)
+{
+	struct sta_info *sta;
+	/* can use in interrupt context */
+	sta = _rtw_alloc_core_stainfo(stapriv, hwaddr);
+
+	/* can not use in interrupt context */
+	_rtw_alloc_phl_stainfo(sta, stapriv, hwaddr);
+
+	return sta;
+}
+
+struct sta_info *rtw_alloc_stainfo_sw(struct	sta_priv *stapriv, const u8 *hwaddr)
+{
+	struct sta_info *sta;
+	/* can use in interrupt context */
+	sta = _rtw_alloc_core_stainfo(stapriv, hwaddr);
+
+	if (sta != NULL) {
+		sta->phl_sta = rtw_phl_alloc_stainfo_sw(
+			GET_PHL_INFO(adapter_to_dvobj(stapriv->padapter)),
+			(u8 *)hwaddr, stapriv->padapter->phl_role);
+
+		if (sta->phl_sta) {
+			rtw_dump_phl_sta_info(RTW_DBGDUMP, sta);
+		} else {
+			RTW_ERR(FUNC_ADPT_FMT ": fail to alloc PHL sta "
+				"for " MAC_FMT " !\n",
+				FUNC_ADPT_ARG(stapriv->padapter),
+				MAC_ARG(hwaddr));
+		}
+	}
+
+	return sta;
+}
+
+u32 rtw_alloc_stainfo_hw(struct	sta_priv *stapriv, struct sta_info *psta)
+{
+	enum rtw_phl_status status = RTW_PHL_STATUS_FAILURE;
+	void *phl = GET_PHL_INFO(adapter_to_dvobj(stapriv->padapter));
+	struct rtw_wifi_role_t *wrole = stapriv->padapter->phl_role;
+	bool alloc = _TRUE, only_hw = _TRUE;
+
+	if ((psta != NULL) && (psta->phl_sta != NULL) && (psta->phl_sta->active == _FALSE))
+		status = rtw_phl_cmd_alloc_stainfo(phl, &psta->phl_sta,
+										(u8 *)psta->phl_sta->mac_addr,
+										wrole, alloc, only_hw,
+										PHL_CMD_DIRECTLY, 0);
+
+	return (status == RTW_PHL_STATUS_SUCCESS) ? _SUCCESS : _FAIL;
+}
 
 /* using pstapriv->sta_hash_lock to protect */
-u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
+u32 static _rtw_free_core_stainfo(_adapter *padapter , struct sta_info *psta)
 {
 	int i;
-	_irqL irqL0;
-	_queue *pfree_sta_queue, *pdefrag_q = NULL;
+	_queue *pfree_sta_queue;
 	struct recv_reorder_ctrl *preorder_ctrl;
 	struct	sta_xmit_priv	*pstaxmitpriv;
 	struct	xmit_priv	*pxmitpriv = &padapter->xmitpriv;
@@ -649,36 +735,52 @@ u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
 	struct hw_xmit *phwxmit;
 	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
+
 	int pending_qcnt[4];
 	u8 is_pre_link_sta = _FALSE;
-	_list	*phead, *plist;
-	_queue *pfree_recv_queue = &padapter->recvpriv.free_recv_queue;
-	union recv_frame *prframe;
 
 	if (psta == NULL)
 		goto exit;
 
-#ifdef CONFIG_RTW_80211K
-	rm_post_event(padapter, RM_ID_FOR_ALL(psta->cmn.aid), RM_EV_cancel);
+#if defined(CONFIG_CORE_TXSC) && defined(USE_ONE_WLHDR)
+	/* free shortcut entry wlhdr buffer */
+	for (i = 0; i < CORE_TXSC_ENTRY_NUM; i++) {
+		if (psta->txsc_entry_cache[i].txsc_wlhdr) {
+			rtw_mfree(psta->txsc_entry_cache[i].txsc_wlhdr, CORE_TXSC_WLHDR_SIZE);
+			psta->txsc_entry_cache[i].txsc_wlhdr = NULL;
+		}
+	}
 #endif
 
-	is_pre_link_sta = rtw_is_pre_link_sta(pstapriv, psta->cmn.mac_addr);
+#ifdef CONFIG_RTW_80211K
+	rm_post_event(padapter, RM_ID_FOR_ALL(psta->phl_sta->aid), RM_EV_cancel);
+#endif
+	#if CONFIG_RTW_PRE_LINK_STA
+	is_pre_link_sta = rtw_is_pre_link_sta(pstapriv, psta->phl_sta->mac_addr);
 
 	if (is_pre_link_sta == _FALSE) {
-		_enter_critical_bh(&(pstapriv->sta_hash_lock), &irqL0);
+		_rtw_spinlock_bh(&(pstapriv->sta_hash_lock));
 		rtw_list_delete(&psta->hash_list);
 		pstapriv->asoc_sta_count--;
-		_exit_critical_bh(&(pstapriv->sta_hash_lock), &irqL0);
+		_rtw_spinunlock_bh(&(pstapriv->sta_hash_lock));
 		rtw_mi_update_iface_status(&(padapter->mlmepriv), 0);
 	} else {
-		_enter_critical_bh(&psta->lock, &irqL0);
+		_rtw_spinlock_bh(&psta->lock);
 		psta->state = WIFI_FW_PRE_LINK;
-		_exit_critical_bh(&psta->lock, &irqL0);
+		_rtw_spinunlock_bh(&psta->lock);
 	}
+	#else
+	_rtw_spinlock_bh(&(pstapriv->sta_hash_lock));
+	rtw_list_delete(&psta->hash_list);
+	pstapriv->asoc_sta_count--;
+	_rtw_spinunlock_bh(&(pstapriv->sta_hash_lock));
+	rtw_mi_update_iface_status(&(padapter->mlmepriv), 0);
 
-	_enter_critical_bh(&psta->lock, &irqL0);
+	#endif
+
+	_rtw_spinlock_bh(&psta->lock);
 	psta->state &= ~WIFI_ASOC_STATE;
-	_exit_critical_bh(&psta->lock, &irqL0);
+	_rtw_spinunlock_bh(&psta->lock);
 
 	pfree_sta_queue = &pstapriv->free_sta_queue;
 
@@ -692,68 +794,54 @@ u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
 	rtw_free_xmitframe_queue(pxmitpriv, &psta->tx_queue);
 	_rtw_deinit_queue(&psta->tx_queue);
 
-	_enter_critical_bh(&pxmitpriv->lock, &irqL0);
+	_rtw_spinlock_bh(&pxmitpriv->lock);
 
 	rtw_free_xmitframe_queue(pxmitpriv, &psta->sleep_q);
 	psta->sleepq_len = 0;
 
-#ifdef CONFIG_RTW_MGMT_QUEUE
-	rtw_free_mgmt_xmitframe_queue(pxmitpriv, &psta->mgmt_sleep_q);
-	psta->mgmt_sleepq_len = 0;
-#endif
-
 	/* vo */
-	/* _enter_critical_bh(&(pxmitpriv->vo_pending.lock), &irqL0); */
+	/* _rtw_spinlock_bh(&(pxmitpriv->vo_pending.lock)); */
 	rtw_free_xmitframe_queue(pxmitpriv, &pstaxmitpriv->vo_q.sta_pending);
 	rtw_list_delete(&(pstaxmitpriv->vo_q.tx_pending));
 	phwxmit = pxmitpriv->hwxmits;
 	phwxmit->accnt -= pstaxmitpriv->vo_q.qcnt;
 	pending_qcnt[0] = pstaxmitpriv->vo_q.qcnt;
 	pstaxmitpriv->vo_q.qcnt = 0;
-	/* _exit_critical_bh(&(pxmitpriv->vo_pending.lock), &irqL0); */
+	/* _rtw_spinunlock_bh(&(pxmitpriv->vo_pending.lock)); */
 
 	/* vi */
-	/* _enter_critical_bh(&(pxmitpriv->vi_pending.lock), &irqL0); */
+	/* _rtw_spinlock_bh(&(pxmitpriv->vi_pending.lock)); */
 	rtw_free_xmitframe_queue(pxmitpriv, &pstaxmitpriv->vi_q.sta_pending);
 	rtw_list_delete(&(pstaxmitpriv->vi_q.tx_pending));
 	phwxmit = pxmitpriv->hwxmits + 1;
 	phwxmit->accnt -= pstaxmitpriv->vi_q.qcnt;
 	pending_qcnt[1] = pstaxmitpriv->vi_q.qcnt;
 	pstaxmitpriv->vi_q.qcnt = 0;
-	/* _exit_critical_bh(&(pxmitpriv->vi_pending.lock), &irqL0); */
+	/* _rtw_spinunlock_bh(&(pxmitpriv->vi_pending.lock)); */
 
 	/* be */
-	/* _enter_critical_bh(&(pxmitpriv->be_pending.lock), &irqL0); */
+	/* _rtw_spinlock_bh(&(pxmitpriv->be_pending.lock)); */
 	rtw_free_xmitframe_queue(pxmitpriv, &pstaxmitpriv->be_q.sta_pending);
 	rtw_list_delete(&(pstaxmitpriv->be_q.tx_pending));
 	phwxmit = pxmitpriv->hwxmits + 2;
 	phwxmit->accnt -= pstaxmitpriv->be_q.qcnt;
 	pending_qcnt[2] = pstaxmitpriv->be_q.qcnt;
 	pstaxmitpriv->be_q.qcnt = 0;
-	/* _exit_critical_bh(&(pxmitpriv->be_pending.lock), &irqL0); */
+	/* _rtw_spinunlock_bh(&(pxmitpriv->be_pending.lock)); */
 
 	/* bk */
-	/* _enter_critical_bh(&(pxmitpriv->bk_pending.lock), &irqL0); */
+	/* _rtw_spinlock_bh(&(pxmitpriv->bk_pending.lock)); */
 	rtw_free_xmitframe_queue(pxmitpriv, &pstaxmitpriv->bk_q.sta_pending);
 	rtw_list_delete(&(pstaxmitpriv->bk_q.tx_pending));
 	phwxmit = pxmitpriv->hwxmits + 3;
 	phwxmit->accnt -= pstaxmitpriv->bk_q.qcnt;
 	pending_qcnt[3] = pstaxmitpriv->bk_q.qcnt;
 	pstaxmitpriv->bk_q.qcnt = 0;
-	/* _exit_critical_bh(&(pxmitpriv->bk_pending.lock), &irqL0); */
-
-#ifdef CONFIG_RTW_MGMT_QUEUE
-	/* mgmt */
-	rtw_free_xmitframe_queue(pxmitpriv, &pstaxmitpriv->mgmt_q.sta_pending);
-	rtw_list_delete(&(pstaxmitpriv->mgmt_q.tx_pending));
-	phwxmit = pxmitpriv->hwxmits + 4;
-	phwxmit->accnt -= pstaxmitpriv->mgmt_q.qcnt;
-	pstaxmitpriv->mgmt_q.qcnt = 0;
-#endif
+	/* _rtw_spinunlock_bh(&(pxmitpriv->bk_pending.lock)); */
 
 	rtw_os_wake_queue_at_free_stainfo(padapter, pending_qcnt);
 
-	_exit_critical_bh(&pxmitpriv->lock, &irqL0);
+	_rtw_spinunlock_bh(&pxmitpriv->lock);
 
 
 	/* re-init sta_info; 20061114 */ /* will be init in alloc_stainfo */
@@ -770,18 +858,19 @@ u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
 
 	/* for A-MPDU Rx reordering buffer control, cancel reordering_ctrl_timer */
 	for (i = 0; i < 16 ; i++) {
-		_irqL irqL;
-		_queue *ppending_recvframe_queue;
-
 		preorder_ctrl = &psta->recvreorder_ctrl[i];
 		rtw_clear_bit(RTW_RECV_ACK_OR_TIMEOUT, &preorder_ctrl->rec_abba_rsp_ack);
 
-		_cancel_timer_ex(&preorder_ctrl->reordering_ctrl_timer);
+#ifdef CONFIG_RECV_REORDERING_CTRL
+		_list	*phead, *plist;
+		union recv_frame *prframe;
+		_queue *ppending_recvframe_queue;
 
+		_cancel_timer_ex(&preorder_ctrl->reordering_ctrl_timer);
 
 		ppending_recvframe_queue = &preorder_ctrl->pending_recvframe_queue;
 
-		_enter_critical_bh(&ppending_recvframe_queue->lock, &irqL);
+		_rtw_spinlock_bh(&ppending_recvframe_queue->lock);
 
 		phead =	get_list_head(ppending_recvframe_queue);
 		plist = get_next(phead);
@@ -793,48 +882,44 @@ u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
 
 			rtw_list_delete(&(prframe->u.hdr.list));
 
-			rtw_free_recvframe(prframe, pfree_recv_queue);
+			rtw_free_recvframe(prframe);
 		}
 
-		_exit_critical_bh(&ppending_recvframe_queue->lock, &irqL);
-
+		_rtw_spinunlock_bh(&ppending_recvframe_queue->lock);
+#endif /*CONFIG_RECV_REORDERING_CTRL*/
 	}
 
 	/* CVE-2020-24586, clear defrag queue */
-	pdefrag_q = &psta->sta_recvpriv.defrag_q;
-	enter_critical_bh(&pdefrag_q->lock);
-	phead = get_list_head(pdefrag_q);
-	plist = get_next(phead);
-	while (!rtw_is_list_empty(phead)) {
-		prframe = LIST_CONTAINOR(plist, union recv_frame, u);
-		plist = get_next(plist);
-		rtw_list_delete(&(prframe->u.hdr.list));
-		rtw_free_recvframe(prframe, pfree_recv_queue);
+	{
+		_list	*phead, *plist;
+		_queue *pfree_sta_queue, *pdefrag_q = &psta->sta_recvpriv.defrag_q;
+		union recv_frame *prframe;
+
+		_rtw_spinlock_bh(&pdefrag_q->lock);
+		phead = get_list_head(pdefrag_q);
+		plist = get_next(phead);
+		while (!rtw_is_list_empty(phead)) {
+			prframe = LIST_CONTAINOR(plist, union recv_frame, u);
+			plist = get_next(plist);
+			rtw_list_delete(&(prframe->u.hdr.list));
+			rtw_free_recvframe(prframe);
+		}
+		_rtw_spinunlock_bh(&pdefrag_q->lock);
 	}
-	exit_critical_bh(&pdefrag_q->lock);
-
-
-	if (!((psta->state & WIFI_AP_STATE) || MacAddr_isBcst(psta->cmn.mac_addr)) && is_pre_link_sta == _FALSE)
-		rtw_hal_set_odm_var(padapter, HAL_ODM_STA_INFO, psta, _FALSE);
-
-
-	/* release mac id for non-bc/mc station, */
-	if (is_pre_link_sta == _FALSE)
-		rtw_release_macid(pstapriv->padapter, psta);
 
 #ifdef CONFIG_AP_MODE
 
 	/*
-		_enter_critical_bh(&pstapriv->asoc_list_lock, &irqL0);
+		_rtw_spinlock_bh(&pstapriv->asoc_list_lock);
 		rtw_list_delete(&psta->asoc_list);
-		_exit_critical_bh(&pstapriv->asoc_list_lock, &irqL0);
+		_rtw_spinunlock_bh(&pstapriv->asoc_list_lock);
 	*/
-	_enter_critical_bh(&pstapriv->auth_list_lock, &irqL0);
+	_rtw_spinlock_bh(&pstapriv->auth_list_lock);
 	if (!rtw_is_list_empty(&psta->auth_list)) {
 		rtw_list_delete(&psta->auth_list);
 		pstapriv->auth_list_cnt--;
 	}
-	_exit_critical_bh(&pstapriv->auth_list_lock, &irqL0);
+	_rtw_spinunlock_bh(&pstapriv->auth_list_lock);
 
 	psta->expire_to = 0;
 #ifdef CONFIG_ATMEL_RC_PATCH
@@ -854,14 +939,14 @@ u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
 #ifdef CONFIG_NATIVEAP_MLME
 
 	if (pmlmeinfo->state == _HW_STATE_AP_) {
-		rtw_tim_map_clear(padapter, pstapriv->sta_dz_bitmap, psta->cmn.aid);
-		rtw_tim_map_clear(padapter, pstapriv->tim_bitmap, psta->cmn.aid);
+		rtw_tim_map_clear(padapter, pstapriv->sta_dz_bitmap, psta->phl_sta->aid);
+		rtw_tim_map_clear(padapter, pstapriv->tim_bitmap, psta->phl_sta->aid);
 
 		/* rtw_indicate_sta_disassoc_event(padapter, psta); */
 
-		if ((psta->cmn.aid > 0) && (pstapriv->sta_aid[psta->cmn.aid - 1] == psta)) {
-			pstapriv->sta_aid[psta->cmn.aid - 1] = NULL;
-			psta->cmn.aid = 0;
+		if ((psta->phl_sta->aid > 0) && (pstapriv->sta_aid[psta->phl_sta->aid - 1] == psta)) {
+			pstapriv->sta_aid[psta->phl_sta->aid - 1] = NULL;
+			psta->phl_sta->aid = 0;
 		}
 	}
 
@@ -871,6 +956,9 @@ u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
 	psta->under_exist_checking = 0;
 #endif
 
+#ifdef CONFIG_RTW_80211R_AP
+	rtw_ft_peer_info_free(psta);
+#endif
 #endif /* CONFIG_AP_MODE	 */
 
 	rtw_st_ctl_deinit(&psta->st_ctl);
@@ -878,21 +966,64 @@ u32	rtw_free_stainfo(_adapter *padapter , struct sta_info *psta)
 	if (is_pre_link_sta == _FALSE) {
 		_rtw_spinlock_free(&psta->lock);
 
-		/* _enter_critical_bh(&(pfree_sta_queue->lock), &irqL0); */
-		_enter_critical_bh(&(pstapriv->sta_hash_lock), &irqL0);
+		/* _rtw_spinlock_bh(&(pfree_sta_queue->lock)); */
+		_rtw_spinlock_bh(&(pstapriv->sta_hash_lock));
 		rtw_list_insert_tail(&psta->list, get_list_head(pfree_sta_queue));
-		_exit_critical_bh(&(pstapriv->sta_hash_lock), &irqL0);
-		/* _exit_critical_bh(&(pfree_sta_queue->lock), &irqL0); */
+		_rtw_spinunlock_bh(&(pstapriv->sta_hash_lock));
+		/* _rtw_spinunlock_bh(&(pfree_sta_queue->lock)); */
 	}
 
 exit:
 	return _SUCCESS;
 }
 
+static void _rtw_free_phl_stainfo(_adapter *adapter, struct sta_info *sta, u8 only_free_sw)
+{
+	void *phl = GET_PHL_INFO(adapter_to_dvobj(adapter));
+	enum rtw_phl_status pstaus = RTW_PHL_STATUS_SUCCESS;
+	u8 hwaddr[ETH_ALEN] = {0};
+	bool alloc = _FALSE, only_hw = _FALSE;
+
+	if (sta != NULL) {
+		_rtw_memcpy(hwaddr, sta->phl_sta->mac_addr, ETH_ALEN);
+		if (only_free_sw)
+			pstaus = rtw_phl_free_stainfo_sw(phl, sta->phl_sta);
+		else
+			pstaus = rtw_phl_cmd_alloc_stainfo(phl, &sta->phl_sta,
+											sta->phl_sta->mac_addr,
+											adapter->phl_role,
+											alloc, only_hw,
+											PHL_CMD_DIRECTLY, 0);
+
+		if (pstaus != RTW_PHL_STATUS_SUCCESS)
+			RTW_ERR(FUNC_ADPT_FMT ": fail to free PHL sta "
+				"for " MAC_FMT " (status=%d)!\n",
+				FUNC_ADPT_ARG(adapter),
+				MAC_ARG(hwaddr),
+				pstaus);
+		else
+			/* free stainfo success, set pointer to NULL */
+			sta->phl_sta = NULL;
+	}
+}
+
+u32	rtw_free_stainfo(_adapter *padapter, struct sta_info *psta)
+{
+	_rtw_free_core_stainfo(padapter, psta);
+	_rtw_free_phl_stainfo(padapter, psta, _FALSE);
+	return _SUCCESS;
+}
+
+u32	rtw_free_stainfo_sw(_adapter *padapter, struct sta_info *psta)
+{
+	_rtw_free_core_stainfo(padapter, psta);
+	_rtw_free_phl_stainfo(padapter, psta, _TRUE);
+	return _SUCCESS;
+}
+
 /* free all stainfo which in sta_hash[all] */
 void rtw_free_all_stainfo(_adapter *padapter)
 {
-	_irqL	 irqL;
 	_list	*plist, *phead;
 	s32	index;
 	struct sta_info *psta = NULL;
@@ -906,7 +1037,7 @@ void rtw_free_all_stainfo(_adapter *padapter)
 	if (pstapriv->asoc_sta_count == 1)
 		goto exit;
 
-	_enter_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+	_rtw_spinlock_bh(&pstapriv->sta_hash_lock);
 
 	for (index = 0; index < NUM_STA; index++) {
 		phead = &(pstapriv->sta_hash[index]);
@@ -918,7 +1049,9 @@ void rtw_free_all_stainfo(_adapter *padapter)
 			plist = get_next(plist);
 
 			if (pbcmc_stainfo != psta) {
-				if (rtw_is_pre_link_sta(pstapriv, psta->cmn.mac_addr) == _FALSE)
+				#if CONFIG_RTW_PRE_LINK_STA
+				if (rtw_is_pre_link_sta(pstapriv, psta->phl_sta->mac_addr) == _FALSE)
+				#endif
 					rtw_list_delete(&psta->hash_list);
 
 				stainfo_offset = rtw_stainfo_offset(pstapriv, psta);
@@ -929,7 +1062,7 @@ void rtw_free_all_stainfo(_adapter *padapter)
 		}
 	}
 
-	_exit_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+	_rtw_spinunlock_bh(&pstapriv->sta_hash_lock);
 
 
 	for (index = 0; index < free_sta_num; index++) {
@@ -944,31 +1077,59 @@ exit:
 /* any station allocated can be searched by hash list */
 struct sta_info *rtw_get_stainfo(struct sta_priv *pstapriv, const u8 *hwaddr)
 {
-
-	_irqL	 irqL;
-
 	_list	*plist, *phead;
-
 	struct sta_info *psta = NULL;
-
-	u32	index;
-
-	const u8 *addr;
-
-	u8 bc_addr[ETH_ALEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-
+	struct rtw_phl_stainfo_t *phl_sta_self = NULL;
+	void *phl = GET_PHL_INFO(adapter_to_dvobj(pstapriv->padapter));
+	struct rtw_wifi_role_t *phl_role;
+	u32 index;
 
 	if (hwaddr == NULL)
 		return NULL;
 
-	if (IS_MCAST(hwaddr))
-		addr = bc_addr;
-	else
-		addr = hwaddr;
+	if (pstapriv->padapter->phl_role == NULL) {
+		RTW_ERR(FUNC_ADPT_FMT" phl_role == NULL\n", FUNC_ADPT_ARG(pstapriv->padapter));
+		rtw_warn_on(1);
+		return NULL;
+	}
+	phl_role = pstapriv->padapter->phl_role;
 
-	index = wifi_mac_hash(addr);
+	/* if addr is bcmc addr, return self phl_sta */
+	if (IS_MCAST(hwaddr)) {
+		phl_sta_self = rtw_phl_get_stainfo_self(phl, phl_role);
 
-	_enter_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+		if (phl_sta_self == NULL) {
+			RTW_INFO("%s: get phl sta self fail", __func__);
+			return NULL;
+		}
+
+		/*
+		due to using self sta to replace bcmc sta
+		change index to self hash index
+		*/
+
+		index = wifi_mac_hash(phl_role->mac_addr);
+	} else {
+
+		/*
+		for sta mode due to self sta info & AP sta info are the same sta info
+		using self hash index for sta mode, or bmc sta will not found self sta
+		*/
+		switch (phl_role->type) {
+		case PHL_RTYPE_NONE:
+		case PHL_RTYPE_STATION:
+		case PHL_RTYPE_ADHOC:
+		case PHL_RTYPE_P2P_DEVICE:
+		case PHL_RTYPE_P2P_GC:
+			index = wifi_mac_hash(phl_role->mac_addr);
+		break;
+		default:
+			index = wifi_mac_hash(hwaddr);
+		break;
+		}
+	}
+
+	_rtw_spinlock_bh(&pstapriv->sta_hash_lock);
 
 	phead = &(pstapriv->sta_hash[index]);
 	plist = get_next(phead);
@@ -978,54 +1139,67 @@ struct sta_info *rtw_get_stainfo(struct sta_priv *pstapriv, const u8 *hwaddr)
 
 		psta = LIST_CONTAINOR(plist, struct sta_info, hash_list);
 
-		if ((_rtw_memcmp(psta->cmn.mac_addr, addr, ETH_ALEN)) == _TRUE) {
+		if (psta->phl_sta == NULL) {
+			psta = NULL;
+			RTW_ERR("phl_sta of sta is NULL\n");
+			plist = get_next(plist);
+			continue;
+		}
+
+		/* if add is bcmc addr, find matched self phl_sta, and return  */
+		if (IS_MCAST(hwaddr) && psta->phl_sta == phl_sta_self)
+			break;
+
+		/* if add is not bcmc addr, compare mac_addr  */
+		if ((_rtw_memcmp(psta->phl_sta->mac_addr, hwaddr, ETH_ALEN)) == _TRUE) {
 			/* if found the matched address */
 			break;
 		}
+
 		psta = NULL;
 		plist = get_next(plist);
 	}
 
-	_exit_critical_bh(&pstapriv->sta_hash_lock, &irqL);
+	_rtw_spinunlock_bh(&pstapriv->sta_hash_lock);
 	return psta;
 
 }
 
-u32 rtw_init_bcmc_stainfo(_adapter *padapter)
+u32	rtw_free_self_stainfo(_adapter *adapter)
+{
+	struct sta_info *sta = NULL;
+	struct sta_priv *stapriv = &adapter->stapriv;
+
+	sta = rtw_get_stainfo(stapriv, adapter->phl_role->mac_addr);
+
+	if (sta != NULL) {
+		_rtw_free_core_stainfo(adapter, sta);
+		_rtw_free_phl_stainfo(adapter, sta, _FALSE);
+	}
+
+	return _SUCCESS;
+}
+
+u32 rtw_init_self_stainfo(_adapter *padapter)
 {
 
-	struct sta_info	*psta;
-	struct tx_servq	*ptxservq;
+	struct sta_info *psta;
+	struct tx_servq *ptxservq;
 	u32 res = _SUCCESS;
-	NDIS_802_11_MAC_ADDRESS	bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+	struct sta_priv *pstapriv = &padapter->stapriv;
 
-	struct	sta_priv *pstapriv = &padapter->stapriv;
-
-
-	psta = rtw_alloc_stainfo(pstapriv, bcast_addr);
+	psta = rtw_get_stainfo(pstapriv, padapter->phl_role->mac_addr);
 
 	if (psta == NULL) {
-		res = _FAIL;
-		goto exit;
+		psta = rtw_alloc_stainfo(pstapriv, padapter->phl_role->mac_addr);
+		if (psta == NULL) {
+			RTW_ERR("%s alloc self sta fail\n", __func__);
+			res = _FAIL;
+			goto exit;
+		}
 	}
-#ifdef CONFIG_BEAMFORMING
-	psta->cmn.bf_info.g_id = 63;
-	psta->cmn.bf_info.p_aid = 0;
-#endif
-
-	ptxservq = &(psta->sta_xmitpriv.be_q);
-
-	/*
-		_enter_critical(&pstapending->lock, &irqL0);
-
-		if (rtw_is_list_empty(&ptxservq->tx_pending))
-			rtw_list_insert_tail(&ptxservq->tx_pending, get_list_head(pstapending));
-
-		_exit_critical(&pstapending->lock, &irqL0);
-	*/
-
 exit:
-	return _SUCCESS;
+	return res;
 
 }
 
@@ -1058,7 +1232,7 @@ u16 rtw_aid_alloc(_adapter *adapter, struct sta_info *sta)
 	if (i >= stapriv->max_aid || used_cnt >= stapriv->max_num_sta)
 		aid = 0;
 
-	sta->cmn.aid = aid;
+	sta->phl_sta->aid = aid;
 	if (aid) {
 		stapriv->sta_aid[aid - 1] = sta;
 		if (stapriv->rr_aid)
@@ -1111,7 +1285,6 @@ const char *const _acl_mode_str[RTW_ACL_MODE_MAX] = {
 u8 _rtw_access_ctrl(_adapter *adapter, u8 period, const u8 *mac_addr)
 {
 	u8 res = _TRUE;
-	_irqL irqL;
 	_list *list, *head;
 	struct rtw_wlan_acl_node *acl_node;
 	u8 match = _FALSE;
@@ -1131,7 +1304,7 @@ u8 _rtw_access_ctrl(_adapter *adapter, u8 period, const u8 *mac_addr)
 		&& acl->mode != RTW_ACL_MODE_DENY_UNLESS_LISTED)
 		goto exit;
 
-	_enter_critical_bh(&(acl_node_q->lock), &irqL);
+	_rtw_spinlock_bh(&(acl_node_q->lock));
 	head = get_list_head(acl_node_q);
 	list = get_next(head);
 	while (rtw_end_of_queue_search(head, list) == _FALSE) {
@@ -1145,7 +1318,7 @@ u8 _rtw_access_ctrl(_adapter *adapter, u8 period, const u8 *mac_addr)
 			}
 		}
 	}
-	_exit_critical_bh(&(acl_node_q->lock), &irqL);
+	_rtw_spinunlock_bh(&(acl_node_q->lock));
 
 	if (acl->mode == RTW_ACL_MODE_ACCEPT_UNLESS_LISTED)
 		res = (match == _TRUE) ?  _FALSE : _TRUE;
@@ -1189,16 +1362,15 @@ void dump_macaddr_acl(void *sel, _adapter *adapter)
 }
 #endif /* CONFIG_RTW_MACADDR_ACL */
 
+#if CONFIG_RTW_PRE_LINK_STA
 bool rtw_is_pre_link_sta(struct sta_priv *stapriv, u8 *addr)
 {
-#if CONFIG_RTW_PRE_LINK_STA
 	struct pre_link_sta_ctl_t *pre_link_sta_ctl = &stapriv->pre_link_sta_ctl;
 	struct sta_info *sta = NULL;
 	u8 exist = _FALSE;
 	int i;
-	_irqL irqL;
 
-	_enter_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinlock_bh(&(pre_link_sta_ctl->lock));
 	for (i = 0; i < RTW_PRE_LINK_STA_NUM; i++) {
 		if (pre_link_sta_ctl->node[i].valid == _TRUE
 			&& _rtw_memcmp(pre_link_sta_ctl->node[i].addr, addr, ETH_ALEN) == _TRUE
@@ -1207,13 +1379,11 @@ bool rtw_is_pre_link_sta(struct sta_priv *stapriv, u8 *addr)
 			break;
 		}
 	}
-	_exit_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinunlock_bh(&(pre_link_sta_ctl->lock));
 
 	return exist;
-#else
-	return _FALSE;
-#endif
 }
+#endif
 
 #if CONFIG_RTW_PRE_LINK_STA
 struct sta_info *rtw_pre_link_sta_add(struct sta_priv *stapriv, u8 *hwaddr)
@@ -1223,12 +1393,11 @@ struct sta_info *rtw_pre_link_sta_add(struct sta_priv *stapriv, u8 *hwaddr)
 	struct sta_info *sta = NULL;
 	u8 exist = _FALSE;
 	int i;
-	_irqL irqL;
 
 	if (rtw_check_invalid_mac_address(hwaddr, _FALSE) == _TRUE)
 		goto exit;
 
-	_enter_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinlock_bh(&(pre_link_sta_ctl->lock));
 	for (i = 0; i < RTW_PRE_LINK_STA_NUM; i++) {
 		if (pre_link_sta_ctl->node[i].valid == _TRUE
 			&& _rtw_memcmp(pre_link_sta_ctl->node[i].addr, hwaddr, ETH_ALEN) == _TRUE
@@ -1247,23 +1416,16 @@ struct sta_info *rtw_pre_link_sta_add(struct sta_priv *stapriv, u8 *hwaddr)
 		node->valid = _TRUE;
 		pre_link_sta_ctl->num++;
 	}
-	_exit_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinunlock_bh(&(pre_link_sta_ctl->lock));
 
 	if (node == NULL)
 		goto exit;
-
-	sta = rtw_get_stainfo(stapriv, hwaddr);
-	if (sta)
-		goto odm_hook;
 
 	sta = rtw_alloc_stainfo(stapriv, hwaddr);
 	if (!sta)
 		goto exit;
 
 	sta->state = WIFI_FW_PRE_LINK;
-
-odm_hook:
-	rtw_hal_set_odm_var(stapriv->padapter, HAL_ODM_STA_INFO, sta, _TRUE);
 
 exit:
 	return sta;
@@ -1276,12 +1438,11 @@ void rtw_pre_link_sta_del(struct sta_priv *stapriv, u8 *hwaddr)
 	struct sta_info *sta = NULL;
 	u8 exist = _FALSE;
 	int i;
-	_irqL irqL;
 
 	if (rtw_check_invalid_mac_address(hwaddr, _FALSE) == _TRUE)
 		goto exit;
 
-	_enter_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinlock_bh(&(pre_link_sta_ctl->lock));
 	for (i = 0; i < RTW_PRE_LINK_STA_NUM; i++) {
 		if (pre_link_sta_ctl->node[i].valid == _TRUE
 			&& _rtw_memcmp(pre_link_sta_ctl->node[i].addr, hwaddr, ETH_ALEN) == _TRUE
@@ -1296,7 +1457,7 @@ void rtw_pre_link_sta_del(struct sta_priv *stapriv, u8 *hwaddr)
 		node->valid = _FALSE;
 		pre_link_sta_ctl->num--;
 	}
-	_exit_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinunlock_bh(&(pre_link_sta_ctl->lock));
 
 	if (exist == _FALSE)
 		goto exit;
@@ -1318,13 +1479,12 @@ void rtw_pre_link_sta_ctl_reset(struct sta_priv *stapriv)
 	struct pre_link_sta_node_t *node = NULL;
 	struct sta_info *sta = NULL;
 	int i, j = 0;
-	_irqL irqL;
 
 	u8 addrs[RTW_PRE_LINK_STA_NUM][ETH_ALEN];
 
 	_rtw_memset(addrs, 0, RTW_PRE_LINK_STA_NUM * ETH_ALEN);
 
-	_enter_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinlock_bh(&(pre_link_sta_ctl->lock));
 	for (i = 0; i < RTW_PRE_LINK_STA_NUM; i++) {
 		if (pre_link_sta_ctl->node[i].valid == _FALSE)
 			continue;
@@ -1333,7 +1493,7 @@ void rtw_pre_link_sta_ctl_reset(struct sta_priv *stapriv)
 		pre_link_sta_ctl->num--;
 		j++;
 	}
-	_exit_critical_bh(&(pre_link_sta_ctl->lock), &irqL);
+	_rtw_spinunlock_bh(&(pre_link_sta_ctl->lock));
 
 	for (i = 0; i < j; i++) {
 		sta = rtw_get_stainfo(stapriv, &(addrs[i][0]));

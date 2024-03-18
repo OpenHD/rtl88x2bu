@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -40,7 +40,7 @@
 struct nat25_network_db_entry {
 	struct nat25_network_db_entry	*next_hash;
 	struct nat25_network_db_entry	**pprev_hash;
-	atomic_t						use_count;
+	ATOMIC_T						use_count;
 	unsigned char					macAddr[6];
 	unsigned long					ageing_timer;
 	unsigned char				networkAddr[MAX_NETWORK_ADDR_LEN];

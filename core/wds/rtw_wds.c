@@ -173,7 +173,7 @@ void dump_wpath(void *sel, _adapter *adapter)
 		wpath = rtw_wds_path_lookup_by_idx(adapter, idx);
 		if (wpath) {
 			_rtw_memcpy(dst, wpath->dst, ETH_ALEN);
-			_rtw_memcpy(next_hop, wpath->next_hop->cmn.mac_addr, ETH_ALEN);
+			_rtw_memcpy(next_hop, wpath->next_hop->phl_sta->mac_addr, ETH_ALEN);
 			age_ms = rtw_get_passing_time_ms(wpath->last_update);
 		}
 
@@ -321,7 +321,7 @@ static void rtw_wds_table_flush_by_iface(struct rtw_wds_table *tbl)
 
 	if (!tbl)
 		return;
-	
+
 	ret = rtw_rhashtable_walk_enter(&tbl->rhead, &iter);
 	if (ret)
 		return;
@@ -452,7 +452,7 @@ int rtw_wds_nexthop_lookup(_adapter *adapter, const u8 *da, u8 *ra)
 
 	next_hop = rtw_rcu_dereference(wpath->next_hop);
 	if (next_hop) {
-		_rtw_memcpy(ra, next_hop->cmn.mac_addr, ETH_ALEN);
+		_rtw_memcpy(ra, next_hop->phl_sta->mac_addr, ETH_ALEN);
 		err = 0;
 	}
 
