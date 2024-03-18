@@ -18,9 +18,8 @@ jobs:
 
     - name: build on x86
       run: |
-        ls -a
-        echo $PWD
+        ls -a /usr/src/
         sudo apt update 
         sudo apt install -y build-essential
-        make
+        make KSRC=/usr/src/linux-headers-6.1.21-v7+ O="" modules
         ls
