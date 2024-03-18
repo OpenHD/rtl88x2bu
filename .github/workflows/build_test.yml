@@ -22,5 +22,5 @@ jobs:
         sudo apt update 
         sudo apt install -y build-essential
         mkdir -p /opt/additionalFiles
-        make ARCH=x86 CROSS_COMPILE= -C /usr/src/linux-headers-6.5.0-1016-azure M=/opt/additionalFiles modules
+        make ARCH=x86 CROSS_COMPILE= -C /usr/src/linux-headers-6.5.0-1016-azure modules
         ls
