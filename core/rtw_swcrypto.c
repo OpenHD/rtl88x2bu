@@ -13,12 +13,35 @@
  *
  *****************************************************************************/
 #include <drv_types.h>
-#include <hal_data.h>
 #include <aes.h>
 #include <aes_siv.h>
 #include <aes_wrap.h>
 #include <sha256.h>
 #include <wlancrypto_wrap.h>
+
+#if 0 //RTW_PHL_TX: mark un-finished codes for reading
+int _rtw_core_ccmp_encrypt(u8 *key, u32 key_len, uint hdrlen, u8 *phdr, uint datalen, u8 *pdata)
+{
+	u8 *enc = NULL;
+	size_t enc_len = 0;
+
+	if (key_len == 16) { /* 128 bits */
+		core_ccmp_encrypt(key,
+			hdrlen, phdr,
+			datalen, pdata,
+			(hdrlen == 26) ? (phdr + hdrlen - 2) : NULL,
+			NULL, 0, &enc_len);
+	} else if (key_len == 32) { /* 256 bits */
+		core_ccmp_256_encrypt(key,
+			hdrlen, phdr,
+			datalen, pdata,
+			(hdrlen == 26) ? (phdr + hdrlen - 2) : NULL,
+			NULL, 0, &enc_len);
+	}
+
+	return _SUCCESS;
+}
+#endif
 
 /**
  * rtw_ccmp_encrypt - 
@@ -281,11 +304,11 @@ void _tdls_generate_tpk(void *sta, const u8 *own_addr, const u8 *bssid)
 	 *	min(MAC_I, MAC_R) || max(MAC_I, MAC_R) || BSSID)
 	 */
 
-	if (_rtw_memcmp2(own_addr, psta->cmn.mac_addr, ETH_ALEN) < 0) {
+	if (_rtw_memcmp2(own_addr, psta->phl_sta->mac_addr, ETH_ALEN) < 0) {
 		_rtw_memcpy(data, own_addr, ETH_ALEN);
-		_rtw_memcpy(data + ETH_ALEN, psta->cmn.mac_addr, ETH_ALEN);
+		_rtw_memcpy(data + ETH_ALEN, psta->phl_sta->mac_addr, ETH_ALEN);
 	} else {
-		_rtw_memcpy(data, psta->cmn.mac_addr, ETH_ALEN);
+		_rtw_memcpy(data, psta->phl_sta->mac_addr, ETH_ALEN);
 		_rtw_memcpy(data + ETH_ALEN, own_addr, ETH_ALEN);
 	}
 

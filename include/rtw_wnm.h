@@ -45,14 +45,15 @@
 	(_rtw_memcmp((a)->mlmepriv.nb_info.roam_target_addr,\
 		(c)->network.MacAddress, ETH_ALEN)))
 
-#define rtw_wnm_set_ext_cap_btm(_pEleStart, _val) \
-	SET_BITS_TO_LE_1BYTE(((u8 *)(_pEleStart))+2, 3, 1, _val)
+#define rtw_wnm_add_btm_ext_cap(d, l)	rtw_add_ext_cap_info(d, l, BSS_TRANSITION)
 
 #define wnm_btm_bss_term_inc(p) (*((u8 *)((p)+3)) & BSS_TERMINATION_INCLUDED)
 
 #define wnm_btm_ess_disassoc_im(p) (*((u8 *)((p)+3)) & ESS_DISASSOC_IMMINENT)
 
 #define wnm_btm_dialog_token(p) (*((u8 *)((p)+2)))
+
+#define wnm_btm_query_reason(p) (*((u8 *)((p)+3)))
 
 #define wnm_btm_req_mode(p) (*((u8 *)((p)+3)))
 
@@ -73,7 +74,7 @@ enum rtw_ieee80211_wnm_actioncode {
 	RTW_WLAN_ACTION_WNM_BTM_REQ = 7,
 	RTW_WLAN_ACTION_WNM_BTM_RSP = 8,
 	RTW_WLAN_ACTION_WNM_NOTIF_REQ = 26,
-	RTW_WLAN_ACTION_WNM_NOTIF_RSP = 27,	
+	RTW_WLAN_ACTION_WNM_NOTIF_RSP = 27,
 };
 
 /*IEEE Std 80211k Figure 7-95b Neighbor Report element format*/
@@ -84,7 +85,7 @@ struct nb_rpt_hdr {
 	u32 bss_info;
 	u8 reg_class;
 	u8 ch_num;
-	u8 phy_type;	
+	u8 phy_type;
 };
 
 /*IEEE Std 80211v, Figure 7-9 BSS Termination Duration subelement field format */
@@ -163,7 +164,7 @@ struct roam_nb_info {
 	u8 nb_rpt_is_same;
 	s8 disassoc_waiting;
 	_timer roam_scan_timer;
-	_timer disassoc_chk_timer;	
+	_timer disassoc_chk_timer;
 
 	u32 features;
 };
@@ -176,7 +177,14 @@ void rtw_wnm_disassoc_chk_hdl(void *ctx);
 
 u8 rtw_wnm_try_btm_roam_imnt(_adapter *padapter);
 
-void rtw_wnm_process_btm_req(_adapter *padapter,  u8* pframe, u32 frame_len);
+void rtw_wnm_process_btm_query(_adapter *padapter,
+	u8* pframe, u32 frame_len);
+
+void rtw_wnm_process_btm_req(_adapter *padapter,
+	u8* pframe, u32 frame_len);
+
+void rtw_wnm_process_notification_req(
+	_adapter *padapter, u8* pframe, u32 frame_len);
 
 void rtw_wnm_reset_btm_candidate(struct roam_nb_info *pnb);
 
@@ -203,7 +211,7 @@ void rtw_roam_nb_info_init(_adapter *padapter);
 u8 rtw_roam_nb_scan_list_set(_adapter *padapter,
 	struct sitesurvey_parm *pparm);
 
-u32 rtw_wnm_btm_candidates_survey(_adapter *padapter, 
+u32 rtw_wnm_btm_candidates_survey(_adapter *padapter,
 	u8* pframe, u32 elem_len, u8 is_preference);
 #endif /* __RTW_WNM_H_ */
 

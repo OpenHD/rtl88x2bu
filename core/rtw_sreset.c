@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -14,13 +14,13 @@
  *****************************************************************************/
 
 #include <drv_types.h>
-#include <hal_data.h>
 #include <rtw_sreset.h>
 
 void sreset_init_value(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	HAL_DATA_TYPE	*pHalData = GET_PHL_COM(dvobj);
 	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
 
 	_rtw_mutex_init(&psrtpriv->silentreset_mutex);
@@ -33,7 +33,8 @@ void sreset_init_value(_adapter *padapter)
 void sreset_reset_value(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	HAL_DATA_TYPE	*pHalData = GET_PHL_COM(dvobj);
 	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
 
 	psrtpriv->Wifi_Error_Status = WIFI_STATUS_SUCCESS;
@@ -45,14 +46,19 @@ void sreset_reset_value(_adapter *padapter)
 u8 sreset_get_wifi_status(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	HAL_DATA_TYPE	*pHalData = GET_PHL_COM(dvobj);
 	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
 	u8 status = WIFI_STATUS_SUCCESS;
 	u32 val32 = 0;
 
 	if (psrtpriv->silent_reset_inprogress == _TRUE)
 		return status;
+	#if 0 /*GEORGIA_TODO_REDEFINE_IO*/
 	val32 = rtw_read32(padapter, REG_TXDMA_STATUS);
+	#else
+	val32 = rtw_hal_get_dma_statu(padapter);
+	#endif
 	if (val32 == 0xeaeaeaea)
 		psrtpriv->Wifi_Error_Status = WIFI_IF_NOT_EXIST;
 	else if (val32 != 0) {
@@ -78,7 +84,8 @@ u8 sreset_get_wifi_status(_adapter *padapter)
 void sreset_set_wifi_error_status(_adapter *padapter, u32 status)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	HAL_DATA_TYPE	*pHalData = GET_PHL_COM(dvobj);
 	pHalData->srestpriv.Wifi_Error_Status = status;
 #endif
 }
@@ -86,7 +93,8 @@ void sreset_set_wifi_error_status(_adapter *padapter, u32 status)
 void sreset_set_trigger_point(_adapter *padapter, s32 tgp)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	HAL_DATA_TYPE	*pHalData = GET_PHL_COM(dvobj);
 	pHalData->srestpriv.dbg_trigger_point = tgp;
 #endif
 }
@@ -94,7 +102,8 @@ void sreset_set_trigger_point(_adapter *padapter, s32 tgp)
 bool sreset_inprogress(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_RESET)
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	HAL_DATA_TYPE	*pHalData = GET_PHL_COM(dvobj);
 	return pHalData->srestpriv.silent_reset_inprogress;
 #else
 	return _FALSE;
@@ -108,20 +117,7 @@ void sreset_restore_security_station(_adapter *padapter)
 	struct sta_info *psta;
 	struct mlme_ext_info	*pmlmeinfo = &padapter->mlmeextpriv.mlmext_info;
 
-	{
-		u8 val8;
-
-		if (pmlmeinfo->auth_algo == dot11AuthAlgrthm_8021X) {
-			val8 = 0xcc;
-#ifdef CONFIG_WAPI_SUPPORT
-		} else if (padapter->wapiInfo.bWapiEnable && pmlmeinfo->auth_algo == dot11AuthAlgrthm_WAPI) {
-			/* Disable TxUseDefaultKey, RxUseDefaultKey, RxBroadcastUseDefaultKey. */
-			val8 = 0x4c;
-#endif
-		} else
-			val8 = 0xcf;
-		rtw_hal_set_hwreg(padapter, HW_VAR_SEC_CFG, (u8 *)(&val8));
-	}
+	rtw_hal_set_hwreg(padapter, HW_VAR_SEC_CFG, NULL);
 
 	if ((padapter->securitypriv.dot11PrivacyAlgrthm == _TKIP_) ||
 	    (padapter->securitypriv.dot11PrivacyAlgrthm == _AES_)) {
@@ -142,7 +138,7 @@ void sreset_restore_network_station(_adapter *padapter)
 	struct mlme_priv *mlmepriv = &padapter->mlmepriv;
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
-	u8 doiqk = _FALSE;
+	u8 do_rfk = _FALSE;
 
 	rtw_setopmode_cmd(padapter, Ndis802_11Infrastructure, RTW_CMDF_DIRECTLY);
 
@@ -166,15 +162,12 @@ void sreset_restore_network_station(_adapter *padapter)
 #endif
 	}
 
-	doiqk = _TRUE;
-	rtw_hal_set_hwreg(padapter, HW_VAR_DO_IQK , &doiqk);
-
-	set_channel_bwmode(padapter, pmlmeext->cur_channel, pmlmeext->cur_ch_offset, pmlmeext->cur_bwmode);
-
-	doiqk = _FALSE;
-	rtw_hal_set_hwreg(padapter , HW_VAR_DO_IQK , &doiqk);
-	/* disable dynamic functions, such as high power, DIG */
-	/*rtw_phydm_func_disable_all(padapter);*/
+	do_rfk = _TRUE;
+	set_channel_bwmode(padapter,
+			pmlmeext->chandef.chan,
+			pmlmeext->chandef.offset,
+			pmlmeext->chandef.bw,
+			do_rfk);
 
 	rtw_hal_set_hwreg(padapter, HW_VAR_BSSID, pmlmeinfo->network.MacAddress);
 
@@ -183,13 +176,9 @@ void sreset_restore_network_station(_adapter *padapter)
 
 		rtw_hal_rcr_set_chk_bssid(padapter, MLME_STA_CONNECTING);
 		rtw_hal_set_hwreg(padapter, HW_VAR_MLME_JOIN, (u8 *)(&join_type));
-
-		rtw_btcoex_connect_notify(padapter, join_type);
 	}
 
-	Set_MSR(padapter, (pmlmeinfo->state & 0x3));
-
-	mlmeext_joinbss_event_callback(padapter, 1);
+	rtw_set_hw_after_join(padapter, 1);
 	/* restore Sequence No. */
 	rtw_hal_set_hwreg(padapter, HW_VAR_RESTORE_HW_SEQ, 0);
 
@@ -201,17 +190,13 @@ void sreset_restore_network_status(_adapter *padapter)
 {
 	struct mlme_priv *mlmepriv = &padapter->mlmepriv;
 
-	if (check_fwstate(mlmepriv, WIFI_STATION_STATE)) {
+	if (MLME_IS_STA(padapter)) {
 		RTW_INFO(FUNC_ADPT_FMT" fwstate:0x%08x - WIFI_STATION_STATE\n", FUNC_ADPT_ARG(padapter), get_fwstate(mlmepriv));
 		sreset_restore_network_station(padapter);
-	}
-#ifdef CONFIG_AP_MODE
-	else if (MLME_IS_AP(padapter) || MLME_IS_MESH(padapter)) {
+	} else if (MLME_IS_AP(padapter) || MLME_IS_MESH(padapter)) {
 		RTW_INFO(FUNC_ADPT_FMT" %s\n", FUNC_ADPT_ARG(padapter), MLME_IS_AP(padapter) ? "AP" : "MESH");
 		rtw_ap_restore_network(padapter);
-	}
-#endif
-	else if (check_fwstate(mlmepriv, WIFI_ADHOC_STATE))
+	} else if (MLME_IS_ADHOC(padapter))
 		RTW_INFO(FUNC_ADPT_FMT" fwstate:0x%08x - WIFI_ADHOC_STATE\n", FUNC_ADPT_ARG(padapter), get_fwstate(mlmepriv));
 	else
 		RTW_INFO(FUNC_ADPT_FMT" fwstate:0x%08x - ???\n", FUNC_ADPT_ARG(padapter), get_fwstate(mlmepriv));
@@ -232,12 +217,12 @@ void sreset_stop_adapter(_adapter *padapter)
 	rtw_cancel_all_timer(padapter);
 
 	/* TODO: OS and HCI independent */
-#if defined(PLATFORM_LINUX) && defined(CONFIG_USB_HCI)
-	tasklet_kill(&pxmitpriv->xmit_tasklet);
+#if defined(CONFIG_USB_HCI)
+	rtw_tasklet_kill(&pxmitpriv->xmit_tasklet);
 #endif
 
 	if (check_fwstate(pmlmepriv, WIFI_UNDER_SURVEY))
-		rtw_scan_abort(padapter);
+		rtw_scan_abort(padapter, 0);
 
 	if (check_fwstate(pmlmepriv, WIFI_UNDER_LINKING)) {
 		rtw_set_to_roam(padapter, 0);
@@ -260,27 +245,27 @@ void sreset_start_adapter(_adapter *padapter)
 		sreset_restore_network_status(padapter);
 
 	/* TODO: OS and HCI independent */
-#if defined(PLATFORM_LINUX) && defined(CONFIG_USB_HCI)
-	tasklet_hi_schedule(&pxmitpriv->xmit_tasklet);
+#if defined(CONFIG_USB_HCI)
+	rtw_tasklet_hi_schedule(&pxmitpriv->xmit_tasklet);
 #endif
-
+	#if 0 /*#ifdef CONFIG_CORE_DM_CHK_TIMER*/
 	if (is_primary_adapter(padapter))
 		_set_timer(&adapter_to_dvobj(padapter)->dynamic_chk_timer, 2000);
-
+	#endif
 	rtw_netif_wake_queue(padapter->pnetdev);
 }
 
 void sreset_reset(_adapter *padapter)
 {
-#ifdef DBG_CONFIG_ERROR_RESET
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
-	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
+#ifdef DBG_CONFIG_ERROR_RESET	
 	struct pwrctrl_priv *pwrpriv = adapter_to_pwrctl(padapter);
 	struct mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 	struct xmit_priv	*pxmitpriv = &padapter->xmitpriv;
-	_irqL irqL;
 	systime start = rtw_get_current_time();
 	struct dvobj_priv *psdpriv = padapter->dvobj;
+	HAL_DATA_TYPE	*pHalData = GET_PHL_COM(psdpriv);
+	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
+
 	struct debug_priv *pdbgpriv = &psdpriv->drv_dbg;
 
 	RTW_INFO("%s\n", __FUNCTION__);
@@ -289,7 +274,7 @@ void sreset_reset(_adapter *padapter)
 
 
 #ifdef CONFIG_LPS
-	rtw_set_ps_mode(padapter, PS_MODE_ACTIVE, 0, 0, "SRESET");
+	rtw_set_ps_mode(padapter, PM_PS_MODE_ACTIVE, 0, 0, "SRESET");
 #endif/* #ifdef CONFIG_LPS */
 
 	_enter_pwrlock(&pwrpriv->lock);
@@ -302,7 +287,7 @@ void sreset_reset(_adapter *padapter)
 	_ips_enter(padapter);
 	_ips_leave(padapter);
 #endif
-#if defined(CONFIG_AP_MODE) && defined(CONFIG_CONCURRENT_MODE)
+#ifdef CONFIG_CONCURRENT_MODE
 	rtw_mi_ap_info_restore(padapter);
 #endif
 	rtw_mi_sreset_adapter_hdl(padapter, _TRUE);/*sreset_start_adapter*/

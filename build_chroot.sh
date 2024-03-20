@@ -42,7 +42,7 @@ if [[ -e /etc/os-release && $(grep -c "Raspbian" /etc/os-release) -gt 0 ]]; then
 else
 sudo apt update 
 sudo apt install -y build-essential flex bc bison dkms
-make KSRC=/usr/src/linux-headers-6.3.13-060313-generic O="" modules
+make ARCH=x86 CROSS_COMPILE= -C /usr/src/linux-headers-6.3.13-060313-generic M=/opt/additionalFiles modules
 mkdir -p package/lib/modules/6.3.13-060313-generic/kernel/drivers/net/wireless/
 cp *.ko package/lib/modules/6.3.13-060313-generic/kernel/drivers/net/wireless/
 ls -a

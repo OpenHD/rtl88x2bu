@@ -29,12 +29,12 @@
 /* WAPI trace debug */
 extern u32 wapi_debug_component;
 
-static inline void dump_buf(u8 *buf, u32 len)
+static inline void wapi_dump_buf(u8 *buf, u32 len)
 {
 	u32 i;
 	printk("-----------------Len %d----------------\n", len);
 	for (i = 0; i < len; i++)
-		printk("%2.2x-", *(buf + i));
+		printk(KERN_CONT"%2.2x-", *(buf + i));
 	printk("\n");
 }
 
@@ -47,7 +47,7 @@ static inline void dump_buf(u8 *buf, u32 len)
 #define WAPI_DATA(component, x, buf, len) \
 	do { if (wapi_debug_component & (component)) { \
 			printk("%s:\n", x);\
-			dump_buf((buf), (len)); } \
+			wapi_dump_buf((buf), (len)); } \
 	} while (0);
 
 #define RT_ASSERT_RET(_Exp)								\
@@ -211,7 +211,7 @@ void rtw_wapi_clear_cam_entry(_adapter *padapter, u8 *pMacAddr);
 
 void rtw_wapi_clear_all_cam_entry(_adapter *padapter);
 
-void rtw_wapi_set_key(_adapter *padapter, RT_WAPI_KEY *pWapiKey, RT_WAPI_STA_INFO *pWapiSta, u8 bGroupKey, u8 bUseDefaultKey);
+void rtw_wapi_set_key(_adapter *padapter, RT_WAPI_KEY *pWapiKey, RT_WAPI_STA_INFO *pWapiSta, u8 bGroupKey);
 
 int rtw_wapi_create_event_send(_adapter *padapter, u8 EventId, u8 *MacAddr, u8 *Buff, u16 BufLen);
 

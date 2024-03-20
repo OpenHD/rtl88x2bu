@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -14,9 +14,6 @@
  *****************************************************************************/
 #ifndef __USB_OPS_LINUX_H__
 #define __USB_OPS_LINUX_H__
-
-#define VENDOR_CMD_MAX_DATA_LEN	254
-#define FW_START_ADDRESS	0x1000
 
 #define RTW_USB_CONTROL_MSG_TIMEOUT_TEST	10/* ms */
 #define RTW_USB_CONTROL_MSG_TIMEOUT	500/* ms */
@@ -35,15 +32,6 @@
 
 #define RTW_USB_BULKOUT_TIMEOUT	5000/* ms */
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0)) || (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 18))
-#define _usbctrl_vendorreq_async_callback(urb, regs)	_usbctrl_vendorreq_async_callback(urb)
-#define usb_bulkout_zero_complete(purb, regs)	usb_bulkout_zero_complete(purb)
-#define usb_write_mem_complete(purb, regs)	usb_write_mem_complete(purb)
-#define usb_write_port_complete(purb, regs)	usb_write_port_complete(purb)
-#define usb_read_port_complete(purb, regs)	usb_read_port_complete(purb)
-#define usb_read_interrupt_complete(purb, regs)	usb_read_interrupt_complete(purb)
-#endif
-
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 12))
 #define rtw_usb_control_msg(dev, pipe, request, requesttype, value, index, data, size, timeout_ms) \
 	usb_control_msg((dev), (pipe), (request), (requesttype), (value), (index), (data), (size), (timeout_ms))
@@ -59,40 +47,20 @@
 #endif
 
 
-#ifdef CONFIG_USB_SUPPORT_ASYNC_VDN_REQ
-int usb_async_write8(struct intf_hdl *pintfhdl, u32 addr, u8 val);
-int usb_async_write16(struct intf_hdl *pintfhdl, u32 addr, u16 val);
-int usb_async_write32(struct intf_hdl *pintfhdl, u32 addr, u32 val);
-#endif /* CONFIG_USB_SUPPORT_ASYNC_VDN_REQ */
+int rtw_os_urb_resource_alloc(struct data_urb *dataurb);
+void rtw_os_urb_resource_free(struct data_urb *dataurb);
 
-unsigned int ffaddr2pipehdl(struct dvobj_priv *pdvobj, u32 addr);
+int usbctrl_vendorreq(struct dvobj_priv *pdvobjpriv, u8 request, u16 value, u16 index,
+				void *pdata, u16 len, u8 requesttype);
 
-void usb_read_mem(struct intf_hdl *pintfhdl, u32 addr, u32 cnt, u8 *rmem);
-void usb_write_mem(struct intf_hdl *pintfhdl, u32 addr, u32 cnt, u8 *wmem);
+u32 rtw_usb_write_port(void *d, u8 *phl_tx_buf_ptr,
+	u8  bulk_id, u32 len, u8 *pkt_data_buf);
 
-void usb_read_port_cancel(struct intf_hdl *pintfhdl);
+void rtw_usb_write_port_cancel(void *d);
 
-u32 usb_write_port(struct intf_hdl *pintfhdl, u32 addr, u32 cnt, u8 *wmem);
-void usb_write_port_cancel(struct intf_hdl *pintfhdl);
+u32 rtw_usb_read_port(void *d, void *rxobj,
+	u8 *inbuf, u32 inbuf_len, u8 bulk_id, u8 minlen);
 
-int usbctrl_vendorreq(struct intf_hdl *pintfhdl, u8 request, u16 value, u16 index, void *pdata, u16 len, u8 requesttype);
-#ifdef CONFIG_USB_SUPPORT_ASYNC_VDN_REQ
-int _usbctrl_vendorreq_async_write(struct usb_device *udev, u8 request,
-		u16 value, u16 index, void *pdata, u16 len, u8 requesttype);
-#endif /* CONFIG_USB_SUPPORT_ASYNC_VDN_REQ */
+void rtw_usb_read_port_cancel(void *d);
 
-u8 usb_read8(struct intf_hdl *pintfhdl, u32 addr);
-u16 usb_read16(struct intf_hdl *pintfhdl, u32 addr);
-u32 usb_read32(struct intf_hdl *pintfhdl, u32 addr);
-int usb_write8(struct intf_hdl *pintfhdl, u32 addr, u8 val);
-int usb_write16(struct intf_hdl *pintfhdl, u32 addr, u16 val);
-int usb_write32(struct intf_hdl *pintfhdl, u32 addr, u32 val);
-int usb_writeN(struct intf_hdl *pintfhdl, u32 addr, u32 length, u8 *pdata);
-u32 usb_read_port(struct intf_hdl *pintfhdl, u32 addr, u32 cnt, u8 *rmem);
-void usb_recv_tasklet(unsigned long data);
-
-#ifdef CONFIG_USB_INTERRUPT_IN_PIPE
-void usb_read_interrupt_complete(struct urb *purb, struct pt_regs *regs);
-u32 usb_read_interrupt(struct intf_hdl *pintfhdl, u32 addr);
-#endif
 #endif

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -121,7 +121,7 @@ __inline static __u64 __arch__swab64(__u64 x)
 	return __arch__swab32(x);
 }
 
-#if defined(PLATFORM_LINUX) || defined(PLATFORM_WINDOWS)
+#if defined(PLATFORM_LINUX)
 	#define swab16 __swab16
 	#define swab32 __swab32
 	#define swab64 __swab64

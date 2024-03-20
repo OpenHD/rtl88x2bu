@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -23,17 +23,35 @@
 #define SHORT_SLOT_TIME					9
 #define NON_SHORT_SLOT_TIME				20
 
-#define CENTER_CH_2G_40M_NUM	9
 #define CENTER_CH_2G_NUM		14
+#define CENTER_CH_2G_40M_NUM	9
+
 #define CENTER_CH_5G_20M_NUM	28	/* 20M center channels */
 #define CENTER_CH_5G_40M_NUM	14	/* 40M center channels */
 #define CENTER_CH_5G_80M_NUM	7	/* 80M center channels */
 #define CENTER_CH_5G_160M_NUM	3	/* 160M center channels */
 #define CENTER_CH_5G_ALL_NUM	(CENTER_CH_5G_20M_NUM + CENTER_CH_5G_40M_NUM + CENTER_CH_5G_80M_NUM)
 
-#define	MAX_CHANNEL_NUM_2G	CENTER_CH_2G_NUM
-#define	MAX_CHANNEL_NUM_5G	CENTER_CH_5G_20M_NUM
-#define	MAX_CHANNEL_NUM		(MAX_CHANNEL_NUM_2G + MAX_CHANNEL_NUM_5G)
+#define CENTER_CH_6G_20M_NUM	64	/* 20M center channels */
+#define CENTER_CH_6G_40M_NUM	32	/* 40M center channels */
+#define CENTER_CH_6G_80M_NUM	16	/* 80M center channels */
+#define CENTER_CH_6G_160M_NUM	8	/* 160M center channels */
+
+#define	MAX_CHANNEL_NUM_2G		CENTER_CH_2G_NUM
+#define	MAX_CHANNEL_NUM_5G		CENTER_CH_5G_20M_NUM
+#define MAX_CHANNEL_NUM_6G		CENTER_CH_6G_20M_NUM
+#define MAX_CHANNEL_NUM_2G_5G	(MAX_CHANNEL_NUM_2G + MAX_CHANNEL_NUM_5G)
+
+#define	MAX_CHANNEL_NUM		( \
+	MAX_CHANNEL_NUM_2G \
+	+ (CONFIG_IEEE80211_BAND_5GHZ ? MAX_CHANNEL_NUM_5G : 0) \
+	+ (CONFIG_IEEE80211_BAND_6GHZ ? MAX_CHANNEL_NUM_6G : 0) \
+	)
+
+/*
+* MAX_CHANNEL_NUM_OF_BAND is used by  op_class_pref_t only.
+* TODO: consider 6G band or remove this after allocate op_class_pref_t dynamically
+*/
 #define MAX_CHANNEL_NUM_OF_BAND rtw_max(MAX_CHANNEL_NUM_2G, MAX_CHANNEL_NUM_5G)
 
 extern u8 center_ch_2g[CENTER_CH_2G_NUM];
@@ -52,7 +70,6 @@ u8 center_chs_5g_num(u8 bw);
 u8 center_chs_5g(u8 bw, u8 id);
 
 u8 rtw_get_scch_by_cch_offset(u8 cch, u8 bw, u8 offset);
-u8 rtw_get_scch_by_cch_opch(u8 cch, u8 bw, u8 opch);
 
 u8 rtw_get_op_chs_by_cch_bw(u8 cch, u8 bw, u8 **op_chs, u8 *op_ch_num);
 
@@ -88,17 +105,6 @@ enum	_REG_PREAMBLE_MODE {
 
 #define rf_path_char(path) (((path) >= RF_PATH_MAX) ? 'X' : 'A' + (path))
 
-/* Bandwidth Offset */
-#define HAL_PRIME_CHNL_OFFSET_DONT_CARE	0
-#define HAL_PRIME_CHNL_OFFSET_LOWER	1
-#define HAL_PRIME_CHNL_OFFSET_UPPER	2
-
-typedef enum _BAND_TYPE {
-	BAND_ON_2_4G = 0,
-	BAND_ON_5G = 1,
-	BAND_MAX,
-} BAND_TYPE, *PBAND_TYPE;
-
 #ifdef CONFIG_NARROWBAND_SUPPORTING
 enum nb_config {
 	RTW_NB_CONFIG_NONE		= 0,
@@ -107,8 +113,8 @@ enum nb_config {
 };
 #endif
 
-extern const char *const _band_str[];
-#define band_str(band) (((band) >= BAND_MAX) ? _band_str[BAND_MAX] : _band_str[(band)])
+extern const char *const _rtw_band_str[];
+#define band_str(band) (((band) >= BAND_MAX) ? _rtw_band_str[BAND_MAX] : _rtw_band_str[(band)])
 
 extern const u8 _band_to_band_cap[];
 #define band_to_band_cap(band) (((band) >= BAND_MAX) ? _band_to_band_cap[BAND_MAX] : _band_to_band_cap[(band)])
@@ -152,7 +158,7 @@ struct op_ch_t {
 
 struct op_class_pref_t {
 	u8 class_id;
-	BAND_TYPE band;
+	enum band_type band;
 	enum opc_bw bw;
 	u8 ch_num; /* number of chs */
 	u8 op_ch_num; /* channel number which is not static non operable */
@@ -174,17 +180,6 @@ void dump_cap_spt_op_class_ch(void *sel, struct rf_ctl_t *rfctl, bool detail);
 void dump_reg_spt_op_class_ch(void *sel, struct rf_ctl_t *rfctl, bool detail);
 void dump_cur_spt_op_class_ch(void *sel, struct rf_ctl_t *rfctl, bool detail);
 
-/*
- * Represent Extention Channel Offset in HT Capabilities
- * This is available only in 40Mhz mode.
- *   */
-typedef enum _EXTCHNL_OFFSET {
-	EXTCHNL_OFFSET_NO_EXT = 0,
-	EXTCHNL_OFFSET_UPPER = 1,
-	EXTCHNL_OFFSET_NO_DEF = 2,
-	EXTCHNL_OFFSET_LOWER = 3,
-} EXTCHNL_OFFSET, *PEXTCHNL_OFFSET;
-
 typedef enum _VHT_DATA_SC {
 	VHT_DATA_SC_DONOT_CARE = 0,
 	VHT_DATA_SC_20_UPPER_OF_80MHZ = 1,
@@ -205,6 +200,15 @@ typedef enum _PROTECTION_MODE {
 	PROTECTION_MODE_FORCE_DISABLE = 2,
 } PROTECTION_MODE, *PPROTECTION_MODE;
 
+typedef enum _RF_TX_NUM {
+	RF_1TX = 0,
+	RF_2TX,
+	RF_3TX,
+	RF_4TX,
+	RF_MAX_TX_NUM,
+	RF_TX_NUM_NONIMPLEMENT,
+} RF_TX_NUM;
+
 #define RF_TYPE_VALID(rf_type) (rf_type < RF_TYPE_MAX)
 
 extern const u8 _rf_type_to_rf_tx_cnt[];
@@ -216,40 +220,23 @@ extern const u8 _rf_type_to_rf_rx_cnt[];
 extern const char *const _rf_type_to_rfpath_str[];
 #define rf_type_to_rfpath_str(rf_type) (RF_TYPE_VALID(rf_type) ? _rf_type_to_rfpath_str[rf_type] : "UNKNOWN")
 
-void rf_type_to_default_trx_bmp(enum rf_type rf, enum bb_path *tx, enum bb_path *rx);
-
 enum rf_type trx_num_to_rf_type(u8 tx_num, u8 rx_num);
 enum rf_type trx_bmp_to_rf_type(u8 tx_bmp, u8 rx_bmp);
 bool rf_type_is_a_in_b(enum rf_type a, enum rf_type b);
-u8 rtw_restrict_trx_path_bmp_by_trx_num_lmt(u8 trx_path_bmp, u8 tx_num_lmt, u8 rx_num_lmt, u8 *tx_num, u8 *rx_num);
 u8 rtw_restrict_trx_path_bmp_by_rftype(u8 trx_path_bmp, enum rf_type type, u8 *tx_num, u8 *rx_num);
-void tx_path_nss_set_default(enum bb_path txpath_nss[], u8 txpath_num_nss[], u8 txpath);
-void tx_path_nss_set_full_tx(enum bb_path txpath_nss[], u8 txpath_num_nss[], u8 txpath);
+
+#if CONFIG_IEEE80211_BAND_6GHZ
+int rtw_6gch2freq(int chan);
+#endif
 
 int rtw_ch2freq(int chan);
+int rtw_ch2freq_by_band(enum band_type band, int ch);
 int rtw_freq2ch(int freq);
+enum band_type rtw_freq2band(int freq);
+bool rtw_freq_consecutive(int a, int b);
 bool rtw_chbw_to_freq_range(u8 ch, u8 bw, u8 offset, u32 *hi, u32 *lo);
 
 struct rf_ctl_t;
-
-typedef enum _REGULATION_TXPWR_LMT {
-	TXPWR_LMT_NONE = 0, /* no limit */
-	TXPWR_LMT_FCC = 1,
-	TXPWR_LMT_MKK = 2,
-	TXPWR_LMT_ETSI = 3,
-	TXPWR_LMT_IC = 4,
-	TXPWR_LMT_KCC = 5,
-	TXPWR_LMT_NCC = 6,
-	TXPWR_LMT_ACMA = 7,
-	TXPWR_LMT_CHILE = 8,
-	TXPWR_LMT_UKRAINE = 9,
-	TXPWR_LMT_MEXICO = 10,
-	TXPWR_LMT_CN = 11,
-	TXPWR_LMT_WW, /* smallest of all available limit, keep last */
-} REGULATION_TXPWR_LMT;
-
-extern const char *const _regd_str[];
-#define regd_str(regd) (((regd) > TXPWR_LMT_WW) ? _regd_str[TXPWR_LMT_WW] : _regd_str[(regd)])
 
 void txpwr_idx_get_dbm_str(s8 idx, u8 txgi_max, u8 txgi_pdbm, SIZE_T cwidth, char dbm_str[], u8 dbm_str_len);
 
@@ -260,48 +247,9 @@ void txpwr_mbm_get_dbm_str(s16 mbm, SIZE_T cwidth, char dbm_str[], u8 dbm_str_le
 s16 mb_of_ntx(u8 ntx);
 
 #if CONFIG_TXPWR_LIMIT
-struct regd_exc_ent {
-	_list list;
-	char country[2];
-	u8 domain;
-	char regd_name[0];
-};
-
 void dump_regd_exc_list(void *sel, struct rf_ctl_t *rfctl);
-void rtw_regd_exc_add_with_nlen(struct rf_ctl_t *rfctl, const char *country, u8 domain, const char *regd_name, u32 nlen);
-void rtw_regd_exc_add(struct rf_ctl_t *rfctl, const char *country, u8 domain, const char *regd_name);
-struct regd_exc_ent *_rtw_regd_exc_search(struct rf_ctl_t *rfctl, const char *country, u8 domain);
-struct regd_exc_ent *rtw_regd_exc_search(struct rf_ctl_t *rfctl, const char *country, u8 domain);
-void rtw_regd_exc_list_free(struct rf_ctl_t *rfctl);
-
 void dump_txpwr_lmt(void *sel, _adapter *adapter);
-void rtw_txpwr_lmt_add_with_nlen(struct rf_ctl_t *rfctl, const char *regd_name, u32 nlen
-	, u8 band, u8 bw, u8 tlrs, u8 ntx_idx, u8 ch_idx, s8 lmt);
-void rtw_txpwr_lmt_add(struct rf_ctl_t *rfctl, const char *regd_name
-	, u8 band, u8 bw, u8 tlrs, u8 ntx_idx, u8 ch_idx, s8 lmt);
-struct txpwr_lmt_ent *_rtw_txpwr_lmt_get_by_name(struct rf_ctl_t *rfctl, const char *regd_name);
-struct txpwr_lmt_ent *rtw_txpwr_lmt_get_by_name(struct rf_ctl_t *rfctl, const char *regd_name);
-void rtw_txpwr_lmt_list_free(struct rf_ctl_t *rfctl);
-#endif /* CONFIG_TXPWR_LIMIT */
-
-#define BB_GAIN_2G 0
-#if CONFIG_IEEE80211_BAND_5GHZ
-#define BB_GAIN_5GLB1 1
-#define BB_GAIN_5GLB2 2
-#define BB_GAIN_5GMB1 3
-#define BB_GAIN_5GMB2 4
-#define BB_GAIN_5GHB 5
 #endif
-
-#if CONFIG_IEEE80211_BAND_5GHZ
-#define BB_GAIN_NUM 6
-#else
-#define BB_GAIN_NUM 1
-#endif
-
-int rtw_ch_to_bb_gain_sel(int ch);
-void rtw_rf_set_tx_gain_offset(_adapter *adapter, u8 path, s8 offset);
-void rtw_rf_apply_tx_gain_offset(_adapter *adapter, u8 ch);
 
 /* only check channel ranges */
 #define rtw_is_2g_ch(ch) (ch >= 1 && ch <= 14)
@@ -319,6 +267,11 @@ void rtw_rf_apply_tx_gain_offset(_adapter *adapter, u8 ch);
 	|| (rtw_is_5g_band2(a) && rtw_is_5g_band2(b)) \
 	|| (rtw_is_5g_band3(a) && rtw_is_5g_band3(b)) \
 	|| (rtw_is_5g_band4(a) && rtw_is_5g_band4(b)))
+
+#define rtw_is_6g_band1(ch) ((ch) >= 1 && (ch) <= 93)
+#define rtw_is_6g_band2(ch) ((ch) >= 97 && (ch) <= 117)
+#define rtw_is_6g_band3(ch) ((ch) >= 121 && (ch) <= 189)
+#define rtw_is_6g_band4(ch) ((ch) >= 193 && (ch) <= 237)
 
 bool rtw_is_long_cac_range(u32 hi, u32 lo, u8 dfs_region);
 bool rtw_is_long_cac_ch(u8 ch, u8 bw, u8 offset, u8 dfs_region);

@@ -14,7 +14,6 @@
  *****************************************************************************/
 
 #include <drv_types.h>
-#include <hal_data.h>
 #ifdef CONFIG_RTW_80211K
 #include "rtw_rm_fsm.h"
 #include "rtw_rm_util.h"
@@ -147,54 +146,54 @@ u8 rm_get_bcn_rcpi(struct rm_obj *prm, struct wlan_network *pnetwork)
 u8 rm_get_frame_rsni(struct rm_obj *prm, union recv_frame *pframe)
 {
 	int i;
-	u8 val8, snr, rx_num;
-	struct hal_spec_t *hal_spec = GET_HAL_SPEC(prm->psta->padapter);
-
+	u8 val8 = 0, snr;
+	struct dvobj_priv *dvobj = adapter_to_dvobj(prm->psta->padapter);
+	u8 rf_path = GET_HAL_RFPATH_NUM(dvobj);
+#if 0
 	if (IS_CCK_RATE((hw_rate_to_m_rate(pframe->u.hdr.attrib.data_rate))))
 		val8 = 255;
 	else {
-		snr = rx_num = 0;
-		for (i = 0; i < hal_spec->rf_reg_path_num; i++) {
-			if (GET_HAL_RX_PATH_BMP(prm->psta->padapter) & BIT(i)) {
-				snr += pframe->u.hdr.attrib.phy_info.rx_snr[i];
-				rx_num++;
-			}
-		}
-		snr = snr / rx_num;
+		snr = 0;
+		for (i = 0; i < rf_path; i++)
+			snr += pframe->u.hdr.attrib.phy_info.rx_snr[i];
+		snr = snr / rf_path;
 		val8 = (u8)(snr + 10)*2;
 	}
+#endif
 	return val8;
 }
 
 u8 rm_get_bcn_rsni(struct rm_obj *prm, struct wlan_network *pnetwork)
 {
 	int i;
-	u8 val8, snr, rx_num;
-	struct hal_spec_t *hal_spec = GET_HAL_SPEC(prm->psta->padapter);
+	u8 val8, snr;
+	struct dvobj_priv *dvobj = adapter_to_dvobj(prm->psta->padapter);
+	u8 rf_path = GET_HAL_RFPATH_NUM(dvobj);
+
 
 	if (pnetwork->network.PhyInfo.is_cck_rate) {
 		/* current HW doesn't have CCK RSNI */
 		/* 255 indicates RSNI is unavailable */
 		val8 = 255;
 	} else {
-		snr = rx_num = 0;
-		for (i = 0; i < hal_spec->rf_reg_path_num; i++) {
-			if (GET_HAL_RX_PATH_BMP(prm->psta->padapter) & BIT(i)) {
-				snr += pnetwork->network.PhyInfo.rx_snr[i];
-				rx_num++;
-			}
+		snr = 0;
+		for (i = 0; i < rf_path; i++) {
+			snr += pnetwork->network.PhyInfo.rx_snr[i];
 		}
-		snr = snr / rx_num;
+		snr = snr / rf_path;
 		val8 = (u8)(snr + 10)*2;
 	}
 	return val8;
 }
 
 /* output: pwr (unit dBm) */
-int rm_get_tx_power(PADAPTER adapter, enum rf_path path, enum MGN_RATE rate, s8 *pwr)
+int rm_get_tx_power(_adapter *adapter, enum rf_path path, enum MGN_RATE rate, s8 *pwr)
 {
-	struct hal_spec_t *hal_spec = GET_HAL_SPEC(adapter);
-	HAL_DATA_TYPE *hal_data = GET_HAL_DATA(adapter);
+#if 0 /*GEORGIA_TODO_FIXIT*/
+
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+	struct hal_spec_t *hal_spec = GET_HAL_SPEC(dvobj);
+	HAL_DATA_TYPE *hal_data = GET_PHL_COM(dvobj);
 	int tx_num, band, bw, ch, n, rs;
 	u8 base;
 	s8 limt_offset = 127; /* max value of s8 */
@@ -216,11 +215,55 @@ int rm_get_tx_power(PADAPTER adapter, enum rf_path path, enum MGN_RATE rate, s8 
 	}
 
 	*pwr = phy_get_tx_power_final_absolute_value(adapter, path, rate, bw, ch);
-
+#endif
 	return 0;
 }
 
-int rm_get_rx_sensitivity(PADAPTER adapter, enum channel_width bw, enum MGN_RATE rate, s8 *pwr)
+u8 rm_gen_dialog_token(_adapter *padapter)
+{
+	struct rm_priv *prmpriv = &(padapter->rmpriv);
+	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
+	struct mlme_ext_info *pmlmeinfo = &pmlmeext->mlmext_info;
+
+	do {
+		pmlmeinfo->dialogToken++;
+	} while (pmlmeinfo->dialogToken == 0);
+
+	return pmlmeinfo->dialogToken;
+}
+
+u8 rm_gen_meas_token(_adapter *padapter)
+{
+	struct rm_priv *prmpriv = &(padapter->rmpriv);
+
+	do {
+		prmpriv->meas_token++;
+	} while (prmpriv->meas_token == 0);
+
+	return prmpriv->meas_token;
+}
+
+u32 rm_gen_rmid(_adapter *padapter, struct rm_obj *prm, u8 role)
+{
+	u32 rmid;
+
+	if (prm->psta == NULL)
+		goto err;
+
+	if (prm->q.diag_token == 0)
+		goto err;
+
+	rmid = prm->psta->phl_sta->aid << 16
+		| prm->q.diag_token << 8
+		| role;
+
+	return rmid;
+err:
+	RTW_ERR("RM: unable to gen rmid\n");
+	return 0;
+}
+
+int rm_get_rx_sensitivity(_adapter *adapter, enum channel_width bw, enum MGN_RATE rate, s8 *pwr)
 {
 	s8 rx_sensitivity = -110;
 
@@ -403,8 +446,11 @@ int rm_get_rx_sensitivity(PADAPTER adapter, enum channel_width bw, enum MGN_RATE
 /* output: path_a max tx power in dBm */
 int rm_get_path_a_max_tx_power(_adapter *adapter, s8 *path_a)
 {
-	struct hal_spec_t *hal_spec = GET_HAL_SPEC(adapter);
-	HAL_DATA_TYPE *hal_data = GET_HAL_DATA(adapter);
+#if 0 /*GEORGIA_TODO_FIXIT*/
+
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+	struct hal_spec_t *hal_spec = GET_HAL_SPEC(dvobj);
+	HAL_DATA_TYPE *hal_data = GET_PHL_COM(dvobj);
 	int path, tx_num, band, bw, ch, n, rs;
 	u8 rate_num;
 	s8 max_pwr[RF_PATH_MAX], pwr;
@@ -451,50 +497,7 @@ int rm_get_path_a_max_tx_power(_adapter *adapter, s8 *path_a)
 	RTW_INFO("RM: path_a max_pwr=%ddBm\n", max_pwr[0]);
 #endif
 	*path_a = max_pwr[0];
-	return 0;
-}
-
-u8 rm_gen_dialog_token(_adapter *padapter)
-{
-	struct rm_priv *prmpriv = &(padapter->rmpriv);
-	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
-	struct mlme_ext_info *pmlmeinfo = &pmlmeext->mlmext_info;
-
-	do {
-		pmlmeinfo->dialogToken++;
-	} while (pmlmeinfo->dialogToken == 0);
-
-	return pmlmeinfo->dialogToken;
-}
-
-u8 rm_gen_meas_token(_adapter *padapter)
-{
-	struct rm_priv *prmpriv = &(padapter->rmpriv);
-
-	do {
-		prmpriv->meas_token++;
-	} while (prmpriv->meas_token == 0);
-
-	return prmpriv->meas_token;
-}
-
-u32 rm_gen_rmid(_adapter *padapter, struct rm_obj *prm, u8 role)
-{
-	u32 rmid;
-
-	if (prm->psta == NULL)
-		goto err;
-
-	if (prm->q.diag_token == 0)
-		goto err;
-
-	rmid = prm->psta->cmn.aid << 16
-		| prm->q.diag_token << 8
-		| role;
-
-	return rmid;
-err:
-	RTW_ERR("RM: unable to gen rmid\n");
+#endif
 	return 0;
 }
 
