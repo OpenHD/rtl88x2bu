@@ -13,8 +13,8 @@ jobs:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
         with:
-          root-reserve-mb: 512
-          swap-size-mb: 1024
+          root-reserve-mb: 100
+          swap-size-mb: 200
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
@@ -23,7 +23,21 @@ jobs:
         run: |
           echo "DT=$(date +'%Y-%m-%d_%H%M')" >> $GITHUB_ENV
           echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV    
-             
+      - name: remove even more
+        run: |
+          sudo apt-get purge -y \
+            '^llvm-.*' \
+            'php.*' \
+            '^mongodb-.*' \
+            '^mysql-.*' \
+            azure-cli \
+            google-chrome-stable \
+            firefox \
+            powershell \
+            microsoft-edge-stable \
+            mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean       
       - name: Checkout repository and submodules
         uses: actions/checkout@v3
         with:
