@@ -40,6 +40,26 @@ if [[ -e /etc/os-release && $(grep -c "Raspbian" /etc/os-release) -gt 0 ]]; then
     echo "Pushing the package to OpenHD 2.5 repository"
     ls -a
     cloudsmith push deb --api-key "$API_KEY" openhd/release/raspbian/bullseye 88X2bu-rpi.deb || exit 1
+elif [[ "$(lsb_release -cs)" == "noble" ]]; then 
+    echo "building for ubuntu noble minimal"
+    sudo apt update 
+    sudo apt install -y build-essential flex bc bison dkms
+    sudo apt install -y python3-pip
+    sudo apt remove -y python3-urllib3
+    sudo pip install cloudsmith-api --break-system-packages
+    sudo pip install cloudsmith-cli --break-system-packages
+    make KSRC=/usr/src/linux-headers-6.8.0-31-generic O="" modules
+    mkdir -p package/lib/modules/6.8.0-31-generic/kernel/drivers/net/wireless/
+    cp *.ko package/lib/modules/6.8.0-31-generic/kernel/drivers/net/wireless/
+    ls -a
+    fpm -a amd64 -s dir -t deb -n rtl88x2bu-x86 -v 2.5-evo-$(date '+%m%d%H%M') -C package -p rtl88x2bu-x86.deb --before-install before-install.sh --after-install after-install.sh
+    echo "copied deb file"
+    echo "push to cloudsmith"
+    git describe --exact-match HEAD >/dev/null 2>&1
+    echo "Pushing the package to OpenHD 2.5 repository"
+    cloudsmith push deb --api-key "$API_KEY" openhd/release/ubuntu/noble rtl88x2bu-x86.deb || exit 1
+    echo "---------------"
+    echo "_____________________________________________"
 else
 sudo apt update 
 sudo apt install -y build-essential flex bc bison dkms
