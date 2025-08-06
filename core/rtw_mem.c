@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <rtw_mem.h>
 
 MODULE_LICENSE("GPL");

@@ -15,7 +15,7 @@
 #ifndef __RTL8821A_XMIT_H__
 #define __RTL8821A_XMIT_H__
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 typedef struct txdescriptor_8821a {
 	/* Offset 0 */

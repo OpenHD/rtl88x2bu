@@ -16,7 +16,7 @@
 
 #define _OSDEP_SERVICE_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <linux/kthread.h>
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0))

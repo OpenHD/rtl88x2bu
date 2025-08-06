@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_IOCTL_CFG80211
 u8 rtw_roch_stay_in_cur_chan(_adapter *padapter)

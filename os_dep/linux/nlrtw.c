@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_NLRTW_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include "nlrtw.h"
 
 #ifdef CONFIG_RTW_NLRTW

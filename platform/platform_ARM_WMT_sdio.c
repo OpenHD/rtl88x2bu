@@ -12,7 +12,7 @@
  * more details.
  *
  *****************************************************************************/
-#include <drv_types.h>
+#include "drv_types.h"
 #include <mach/wmt_iomux.h>
 #include <linux/gpio.h>
 

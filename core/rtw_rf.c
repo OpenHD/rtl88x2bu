@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_RF_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 u8 center_ch_2g[CENTER_CH_2G_NUM] = {

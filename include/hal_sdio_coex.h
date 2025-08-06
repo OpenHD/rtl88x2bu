@@ -20,7 +20,7 @@
 #ifndef __HAL_SDIO_COEX_H__
 #define __HAL_SDIO_COEX_H__
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_SDIO_MULTI_FUNCTION_COEX
 

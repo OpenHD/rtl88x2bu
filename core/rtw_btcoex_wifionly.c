@@ -12,7 +12,7 @@
  * more details.
  *
  *****************************************************************************/
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_btcoex_wifionly.h>
 #include <hal_data.h>
 

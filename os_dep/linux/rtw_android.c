@@ -17,7 +17,7 @@
 #include <linux/gpio.h>
 #endif
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #if defined(RTW_ENABLE_WIFI_CONTROL_FUNC)
 #include <linux/platform_device.h>

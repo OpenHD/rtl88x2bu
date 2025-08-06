@@ -1,7 +1,7 @@
 #ifndef RTW_CRYTO_WRAP_H
 #define RTW_CRYTO_WRAP_H
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #define TEST_FAIL() 0
 

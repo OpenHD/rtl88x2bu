@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _IOCTL_LINUX_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <rtw_mp.h>
 #include "../../hal/phydm/phydm_precomp.h"
 #ifdef RTW_HALMAC

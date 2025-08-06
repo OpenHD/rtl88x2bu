@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _HAL_COM_PHYCFG_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 #define PG_TXPWR_1PATH_BYTE_NUM_2G 18

@@ -15,7 +15,7 @@
 #ifndef __HAL_BTCOEX_H__
 #define __HAL_BTCOEX_H__
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 /* Some variables can't get from outsrc BT-Coex,
  * so we need to save here */

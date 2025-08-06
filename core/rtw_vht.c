@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_VHT_C
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 #ifdef CONFIG_80211AC_VHT

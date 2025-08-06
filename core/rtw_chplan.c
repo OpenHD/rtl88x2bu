@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_CHPLAN_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #define RTW_DOMAIN_MAP_VER		"54"
 #define RTW_DOMAIN_MAP_M_VER	"g"

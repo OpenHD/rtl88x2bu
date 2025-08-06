@@ -12,7 +12,7 @@
  * more details.
  *
  *****************************************************************************/
-#include <drv_types.h>
+#include "drv_types.h"
 
 extern void sdhci_bus_scan(void);
 #ifndef ANDROID_2X

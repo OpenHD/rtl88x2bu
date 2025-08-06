@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_P2P_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_P2P
 

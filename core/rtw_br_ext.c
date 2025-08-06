@@ -22,7 +22,7 @@
 #endif
 
 #if 1	/* rtw_wifi_driver */
-	#include <drv_types.h>
+	#include "drv_types.h"
 #else	/* rtw_wifi_driver */
 	#include "./8192cd_cfg.h"
 

@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_IOL
 struct xmit_frame	*rtw_IOL_accquire_xmit_frame(ADAPTER *adapter)

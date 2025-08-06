@@ -17,7 +17,7 @@
 
 #include <drv_conf.h>
 #include <osdep_service.h>
-#include <drv_types.h>
+#include "drv_types.h"
 #include <osdep_intf.h>
 
 

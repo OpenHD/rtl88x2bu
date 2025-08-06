@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _HAL_MP_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_MP_INCLUDED
 

@@ -15,7 +15,7 @@
 #ifndef __MP_PRECOMP_H__
 #define __MP_PRECOMP_H__
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 #include "btc_basic_types.h"
 

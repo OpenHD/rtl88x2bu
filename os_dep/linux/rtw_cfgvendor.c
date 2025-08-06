@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_IOCTL_CFG80211
 

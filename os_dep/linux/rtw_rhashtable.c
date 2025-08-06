@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #if defined(CONFIG_RTW_WDS) || defined(CONFIG_RTW_MESH) /* for now, only promised for kernel versions we support mesh */
 

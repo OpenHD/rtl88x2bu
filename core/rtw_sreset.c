@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 #include <rtw_sreset.h>
 

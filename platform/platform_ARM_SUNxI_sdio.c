@@ -12,7 +12,7 @@
  * more details.
  *
  *****************************************************************************/
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_MMC_SUNXI_POWER_CONTROL
 #ifdef CONFIG_WITS_EVB_V13

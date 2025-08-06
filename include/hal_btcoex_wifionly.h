@@ -15,7 +15,7 @@
 #ifndef __HALBTC_WIFIONLY_H__
 #define __HALBTC_WIFIONLY_H__
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 /* Define the ICs that support wifi only cfg in coex. codes */

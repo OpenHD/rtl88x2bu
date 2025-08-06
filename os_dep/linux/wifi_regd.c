@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_IOCTL_CFG80211
 static void rtw_regd_overide_flags(struct wiphy *wiphy, struct rf_ctl_t *rfctl)

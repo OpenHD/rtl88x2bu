@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_RECV_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 #ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS

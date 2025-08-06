@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _HCI_INTF_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 #include <platform_ops.h>

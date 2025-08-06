@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 #define _RTW_MP_C_
-#include <drv_types.h>
+#include "drv_types.h"
 #ifdef PLATFORM_FREEBSD
 	#include <sys/unistd.h>		/* for RFHIGHPID */
 #endif

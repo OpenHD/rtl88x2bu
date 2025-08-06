@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_WDS_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #if defined(CONFIG_RTW_WDS)
 #include <linux/jhash.h>

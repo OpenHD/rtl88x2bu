@@ -14,7 +14,7 @@
  *****************************************************************************/
 
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <rtw_bt_mp.h>
 
 #if defined(CONFIG_RTL8723B)

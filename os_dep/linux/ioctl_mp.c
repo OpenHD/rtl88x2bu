@@ -14,7 +14,7 @@
  *****************************************************************************/
 #if defined(CONFIG_MP_INCLUDED)
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <rtw_mp.h>
 #include "../../hal/phydm/phydm_precomp.h"
 #include <linux/ctype.h>

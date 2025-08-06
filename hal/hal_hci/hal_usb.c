@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _HAL_USB_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 int	usb_init_recv_priv(_adapter *padapter, u16 ini_in_buf_sz)

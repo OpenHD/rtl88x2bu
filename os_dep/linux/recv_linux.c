@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RECV_OSDEP_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 int rtw_os_recvframe_duplicate_skb(_adapter *padapter, union recv_frame *pcloneframe, _pkt *pskb)
 {

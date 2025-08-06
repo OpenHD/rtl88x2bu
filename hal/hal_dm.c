@@ -13,7 +13,7 @@
  *
  *****************************************************************************/
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 /* A mapping from HalData to ODM. */

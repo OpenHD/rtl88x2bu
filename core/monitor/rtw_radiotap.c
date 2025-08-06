@@ -16,7 +16,7 @@
 
 #ifdef CONFIG_WIFI_MONITOR
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 #define CHAN2FREQ(a) ((a < 14) ? (2407+5*a) : (5000+5*a))

@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_STA_MGT_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 bool test_st_match_rule(_adapter *adapter, u8 *local_naddr, u8 *local_port, u8 *remote_naddr, u8 *remote_port)
 {

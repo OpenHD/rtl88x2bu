@@ -17,7 +17,7 @@
  *	This file can be applied to following platforms:
  *	CONFIG_PLATFORM_ARM_SUN50IW1P1
  */
-#include <drv_types.h>
+#include "drv_types.h"
 #ifdef CONFIG_GPIO_WAKEUP
 #include <linux/gpio.h>
 #endif

@@ -17,7 +17,7 @@
  *	This file can be applied to following platforms:
  *    CONFIG_PLATFORM_ACTIONS_ATM703X
  */
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_PLATFORM_ACTIONS_ATM705X
 extern int acts_wifi_init(void);

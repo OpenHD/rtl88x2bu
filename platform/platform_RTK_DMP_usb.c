@@ -12,7 +12,7 @@
  * more details.
  *
  *****************************************************************************/
-#include <drv_types.h>
+#include "drv_types.h"
 
 int platform_wifi_power_on(void)
 {

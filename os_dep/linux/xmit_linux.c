@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _XMIT_OSDEP_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #define DBG_DUMP_OS_QUEUE_CTL 0
 

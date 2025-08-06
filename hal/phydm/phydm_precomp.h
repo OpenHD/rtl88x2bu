@@ -79,7 +79,7 @@
 	#define __PACK
 	#define __WLAN_ATTRIB_PACK__
 #elif (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	#include <drv_types.h>
+	#include "drv_types.h"
 	#include <wifi.h>
 	#define	ODM_ENDIAN_TYPE				ODM_ENDIAN_LITTLE
 	#define __PACK

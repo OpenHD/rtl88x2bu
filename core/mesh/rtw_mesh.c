@@ -15,7 +15,7 @@
 #define _RTW_MESH_C_
 
 #ifdef CONFIG_RTW_MESH
-#include <drv_types.h>
+#include "drv_types.h"
 
 const char *_rtw_mesh_plink_str[] = {
 	"UNKNOWN",

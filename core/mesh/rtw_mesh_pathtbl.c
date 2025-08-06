@@ -15,7 +15,7 @@
 #define _RTW_MESH_PATHTBL_C_
 
 #ifdef CONFIG_RTW_MESH
-#include <drv_types.h>
+#include "drv_types.h"
 #include <linux/jhash.h>
 
 #ifdef PLATFORM_LINUX

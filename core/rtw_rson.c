@@ -19,7 +19,7 @@
  ******************************************************************************/
 #define _RTW_RSON_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 
 #ifdef CONFIG_RTW_REPEATER_SON
 

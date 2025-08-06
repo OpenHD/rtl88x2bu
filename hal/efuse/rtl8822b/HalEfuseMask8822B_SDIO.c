@@ -12,7 +12,7 @@
  * more details.
  *
  *****************************************************************************/
-#include <drv_types.h>
+#include "drv_types.h"
 
 #include "HalEfuseMask8822B_SDIO.h"
 

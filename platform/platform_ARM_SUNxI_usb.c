@@ -19,7 +19,7 @@
  *
  */
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <mach/sys_config.h>
 
 #ifdef CONFIG_PLATFORM_ARM_SUNxI
