@@ -607,21 +607,15 @@ exit:
 
 int rtw_ch2freq(int chan)
 {
-	/* see 802.11 17.3.8.3.2 and Annex J
-	* there are overlapping channel numbers in 5GHz and 2GHz bands */
-
-	/*
-	* RTK: don't consider the overlapping channel numbers: 5G channel <= 14,
-	* because we don't support it. simply judge from channel number
-	*/
-
 	if (chan >= 1 && chan <= 14) {
 		if (chan == 14)
 			return 2484;
 		else if (chan < 14)
 			return 2407 + chan * 5;
-        } else if (chan >= 15 && chan <= 177)
-                return 5000 + chan * 5;
+	} else if (chan >= 36 && chan <= 177)
+		return 5000 + chan * 5;
+	else if (chan >= 1 && chan <= 233)
+		return 5950 + chan * 5;
 
 	return 0; /* not supported */
 }
@@ -635,8 +629,10 @@ int rtw_freq2ch(int freq)
 		return (freq - 2407) / 5;
 	else if (freq >= 4910 && freq <= 4980)
 		return (freq - 4000) / 5;
-	else if (freq <= 45000) /* DMG band lower limit */
+	else if (freq >= 5000 && freq < 5950)
 		return (freq - 5000) / 5;
+	else if (freq >= 5950 && freq <= 7125)
+		return (freq - 5950) / 5;
 	else if (freq >= 58320 && freq <= 64800)
 		return (freq - 56160) / 2160;
 	else

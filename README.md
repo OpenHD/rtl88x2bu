@@ -130,6 +130,38 @@ sudo make install
 sudo make uninstall
 ```
 
+## Unlocked channel control via procfs
+The RF synthesizer can cover a wider range than typical 5GHz Wi-Fi channels (roughly 5080MHz ~ 6165MHz). A procfs helper lets you retune to those custom center frequencies without changing user-space tools.
+
+To view usage details:
+```
+cat /proc/net/rtl88x2bu/<wlan>/monitor_chan_override
+```
+
+Usage: `echo "<chan> <bw>" > monitor_chan_override`
+
+* `chan`: 16~253. The center frequency is calculated as `channel*5+5000` MHz.
+* `bw`: 10/20/40/80 MHz. This value should match the bandwidth you configure via `iw`.
+
+Examples:
+
+1. Transmit at 6005MHz with 10MHz BW:
+   * set the interface BW to 10MHz with `iw`
+   * configure your injection tool (e.g., `wfb-ng`) for 20MHz radiotap
+   * `echo "201 10" > /proc/net/rtl88x2bu/<wlan>/monitor_chan_override`
+
+2. Transmit at 5080MHz with 20MHz BW:
+   * set the interface BW to 20MHz with `iw`
+   * configure your injection tool for 20MHz radiotap
+   * `echo "16 20" > /proc/net/rtl88x2bu/<wlan>/monitor_chan_override`
+
+3. Transmit at 5255MHz with 40MHz BW:
+   * set the interface BW to HT40 with `iw`
+   * configure your injection tool for 40MHz radiotap
+   * `echo "51 40" > /proc/net/rtl88x2bu/<wlan>/monitor_chan_override`
+
+Disclaimer: some chips may not lock every frequency. Use at your own risk and comply with local regulations.
+
 ## Manual DKMS installation
 ```
 git clone "https://github.com/RinCat/RTL88x2BU-Linux-Driver.git" /usr/src/rtl88x2bu-git

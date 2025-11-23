@@ -1532,6 +1532,85 @@ static ssize_t proc_set_chan_plan(struct file *file, const char __user *buffer, 
 	return count;
 }
 
+static int proc_get_monitor_chan_override(struct seq_file *m, void *v)
+{
+	RTW_PRINT_SEL(m, "Unlock Center Frequency\n");
+	RTW_PRINT_SEL(m, "Github: OpenHD/rtl88x2cu-ohd\n");
+	RTW_PRINT_SEL(m, "\n");
+	RTW_PRINT_SEL(m, "Usage: echo \"<chan> <bw>\" > monitor_chan_override\n");
+	RTW_PRINT_SEL(m, "chan:	16~253, freq=channel*5+5000\n");
+	RTW_PRINT_SEL(m, "bw:	10/20/40/80, MHz. Not determing the bandwidth, but should be the same as 'iw'\n");
+	RTW_PRINT_SEL(m, "\n");
+	RTW_PRINT_SEL(m, "e.g. \n");
+	RTW_PRINT_SEL(m, "1. To transmit in 6005MHz with 10MHz BW, you should: \n");
+	RTW_PRINT_SEL(m, "\t - use 'iw' to set the bandwidth to 10MHz in any channel \n");
+	RTW_PRINT_SEL(m, "\t - use '-B 20' in 'wfb-ng' or any other tools\n");
+	RTW_PRINT_SEL(m, "\t - echo \"201 10\" > monitor_chan_override\n");
+	RTW_PRINT_SEL(m, "\n");
+	RTW_PRINT_SEL(m, "2. To transmit in 5080MHz with 20MHz BW: \n");
+	RTW_PRINT_SEL(m, "\t - use 'iw' to set the bandwidth to 20MHz in any channel \n");
+	RTW_PRINT_SEL(m, "\t - use '-B 20' in 'wfb-ng' or any other tools\n");
+	RTW_PRINT_SEL(m, "\t - echo \"16 20\" > monitor_chan_override\n");
+	RTW_PRINT_SEL(m, "\n");
+	RTW_PRINT_SEL(m, "3. To transmit in 5255MHz with 40MHz BW: \n");
+	RTW_PRINT_SEL(m, "\t - use 'iw' to set the bandwidth to HT40 in any channel \n");
+	RTW_PRINT_SEL(m, "\t - use '-B 40' in 'wfb-ng' or any other tools\n");
+	RTW_PRINT_SEL(m, "\t - echo \"51 40\" > monitor_chan_override\n");
+	RTW_PRINT_SEL(m, "\n");
+	RTW_PRINT_SEL(m, "Disclaimer: Some chip may not lock on some frequency. There's no guarantee on performance. \n");
+	RTW_PRINT_SEL(m, "The unlocked frequency may damage your hardware.\n");
+	RTW_PRINT_SEL(m, "You should obey the law, and use it at your own risk.\n");
+
+	return 0;
+}
+
+static ssize_t proc_set_monitor_chan_override(struct file *file, const char __user *buffer, size_t count, loff_t *pos, void *data)
+{
+	struct net_device *dev = data;
+	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
+	char tmp[32];
+	u32 chan = 149;
+	u32 bw = 20, bw_cmd = 0;
+	u32 offset = 0;
+
+	if (!padapter)
+		return -EFAULT;
+
+	if (count < 2) {
+		RTW_INFO("monitor_chan_override Argument error. \n");
+		return -EFAULT;
+	}
+
+	if (count > sizeof(tmp)) {
+		rtw_warn_on(1);
+		return -EFAULT;
+	}
+
+	if (buffer && !copy_from_user(tmp, buffer, count)) {
+		int num = sscanf(tmp, "%u %u", &chan, &bw);
+		if (num < 1)
+			return count;
+	}
+	
+	if ((bw != 10) && (bw != 20) && (bw != 40) && (bw != 80)) {
+		RTW_INFO("monitor_chan_override Bandwidth error: %u\n", bw);
+		return count;
+	}
+	
+	switch (bw) {
+		case 10: bw_cmd = 6; break;
+		case 20: bw_cmd = 0; break;
+		case 40: bw_cmd = 1; break;	
+		case 80: bw_cmd = 2; break;
+		default: bw_cmd = 0; break;
+	}
+	
+	RTW_INFO("Write to monitor_chan_override: chan=%d, bw=%d, offset=%d\n", chan, bw, offset);
+	rtw_set_chbw_cmd(padapter, (u8)chan, bw_cmd, (u8)offset, RTW_CMDF_WAIT_ACK);
+
+	return count;
+}
+
 static int proc_get_country_code(struct seq_file *m, void *v)
 {
 	struct net_device *dev = m->private;
@@ -1563,27 +1642,16 @@ static ssize_t proc_set_country_code(struct file *file, const char __user *buffe
 	}
 
 	if (!buffer || copy_from_user(tmp, buffer, count))
-		goto exit;
+	goto exit;
 
 	num = sscanf(tmp, "%c%c", &alpha2[0], &alpha2[1]);
-	if (num !=	2)
-		return count;
+	if (num !=      2)
+	return count;
 
 	rtw_set_country(padapter, alpha2);
 
 exit:
 	return count;
-}
-
-static int cap_spt_op_class_ch_detail = 0;
-
-static int proc_get_cap_spt_op_class_ch(struct seq_file *m, void *v)
-{
-	struct net_device *dev = m->private;
-	_adapter *adapter = (_adapter *)rtw_netdev_priv(dev);
-
-	dump_cap_spt_op_class_ch(m , adapter_to_rfctl(adapter), cap_spt_op_class_ch_detail);
-	return 0;
 }
 
 static ssize_t proc_set_cap_spt_op_class_ch(struct file *file, const char __user *buffer, size_t count, loff_t *pos, void *data)
@@ -5457,11 +5525,12 @@ const struct rtw_proc_hdl adapter_proc_hdls[] = {
 #ifdef CONFIG_P2P_WOWLAN
 	RTW_PROC_HDL_SSEQ("p2p_wowlan_info", proc_get_p2p_wowlan_info, NULL),
 #endif
-	RTW_PROC_HDL_SSEQ("country_code", proc_get_country_code, proc_set_country_code),
-	RTW_PROC_HDL_SSEQ("chan_plan", proc_get_chan_plan, proc_set_chan_plan),
-	RTW_PROC_HDL_SSEQ("cap_spt_op_class_ch", proc_get_cap_spt_op_class_ch, proc_set_cap_spt_op_class_ch),
-	RTW_PROC_HDL_SSEQ("reg_spt_op_class_ch", proc_get_reg_spt_op_class_ch, proc_set_reg_spt_op_class_ch),
-	RTW_PROC_HDL_SSEQ("cur_spt_op_class_ch", proc_get_cur_spt_op_class_ch, proc_set_cur_spt_op_class_ch),
+RTW_PROC_HDL_SSEQ("country_code", proc_get_country_code, proc_set_country_code),
+RTW_PROC_HDL_SSEQ("chan_plan", proc_get_chan_plan, proc_set_chan_plan),
+RTW_PROC_HDL_SSEQ("monitor_chan_override", proc_get_monitor_chan_override, proc_set_monitor_chan_override),
+RTW_PROC_HDL_SSEQ("cap_spt_op_class_ch", proc_get_cap_spt_op_class_ch, proc_set_cap_spt_op_class_ch),
+RTW_PROC_HDL_SSEQ("reg_spt_op_class_ch", proc_get_reg_spt_op_class_ch, proc_set_reg_spt_op_class_ch),
+RTW_PROC_HDL_SSEQ("cur_spt_op_class_ch", proc_get_cur_spt_op_class_ch, proc_set_cur_spt_op_class_ch),
 #if CONFIG_RTW_MACADDR_ACL
 	RTW_PROC_HDL_SSEQ("macaddr_acl", proc_get_macaddr_acl, proc_set_macaddr_acl),
 #endif
