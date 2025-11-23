@@ -612,7 +612,7 @@ int rtw_ch2freq(int chan)
 			return 2484;
 		else if (chan < 14)
 			return 2407 + chan * 5;
-	} else if (chan >= 15 && chan <= 253)
+	} else if (chan >= 15 && chan <= 177)
 		return 5000 + chan * 5;
 
 	return 0; /* not supported */
