@@ -14,7 +14,7 @@
  *****************************************************************************/
 #define _RTW_RF_C_
 
-#include <drv_types.h>
+#include "drv_types.h"
 #include <hal_data.h>
 
 u8 center_ch_2g[CENTER_CH_2G_NUM] = {
@@ -53,37 +53,49 @@ u8 op_chs_of_cch_2g_40m[CENTER_CH_2G_40M_NUM][2] = {
 };
 
 u8 center_ch_5g_all[CENTER_CH_5G_ALL_NUM] = {
-/* G00 */36, 38, 40,
-	42,
+16, 20, 22, 24,
+26, 28, 30, 32,
+
+/* G00 */36, 38, 40, 42,
 /* G01 */44, 46, 48,
-	/* 50, */
+/* 50, */
 /* G02 */52, 54, 56,
-	58,
+58,
 /* G03 */60, 62, 64,
+
+68, 70, 72, 74, 76, 78, 80, 84, 86, 88, 90, 92, 94, 96,
+
 /* G04 */100, 102, 104,
-	106,
+106,
 /* G05 */108, 110, 112,
-	/* 114, */
+/* 114, */
 /* G06 */116, 118, 120,
-	122,
+122,
 /* G07 */124, 126, 128,
 /* G08 */132, 134, 136,
-	138,
+138,
 /* G09 */140, 142, 144,
 /* G10 */149, 151, 153,
-	155,
+155,
 /* G11 */157, 159, 161,
-	/* 163, */
+/* 163, */
 /* G12 */165, 167, 169,
-	171,
-/* G13 */173, 175, 177
+171,
+/* G13 */173, 175, 177,
+
+181, 182, 185, 187, 189, 191, 193, 197, 199,
+201, 203, 205, 207, 209, 213, 215, 217, 219,
+221, 223, 225, 229, 231, 235, 239, 241, 245,
+247, 249, 251
 };
 
 u8 center_ch_5g_20m[CENTER_CH_5G_20M_NUM] = {
+16, 20, 24, 28, 32,
 /* G00 */36, 40,
 /* G01 */44, 48,
 /* G02 */52, 56,
 /* G03 */60, 64,
+68, 72, 76, 80, 84, 88, 92, 96,
 /* G04 */100, 104,
 /* G05 */108, 112,
 /* G06 */116, 120,
@@ -93,21 +105,32 @@ u8 center_ch_5g_20m[CENTER_CH_5G_20M_NUM] = {
 /* G10 */149, 153,
 /* G11 */157, 161,
 /* G12 */165, 169,
-/* G13 */173, 177
+/* G13 */173, 177,
+181, 185, 189, 193, 197,
+201, 205, 209, 213, 217,
+221, 225, 229, 231, 235,
+241, 245, 249, 251
 };
 
-#define ch_to_cch_5g_20m_idx(ch) \
-	( \
-		((ch) >= 36 && (ch) <= 64) ? (((ch) - 36) >> 2) : \
-		((ch) >= 100 && (ch) <= 144) ? 8 + (((ch) - 100) >> 2) : \
-		((ch) >= 149 && (ch) <= 177) ? 20 + (((ch) - 149) >> 2) : 255 \
-	)
+static u8 ch_to_cch_5g_20m_idx(u8 ch)
+{
+        int i;
+
+        for (i = 0; i < CENTER_CH_5G_20M_NUM; i++) {
+                if (center_ch_5g_20m[i] == ch)
+                        return i;
+        }
+
+        return 255;
+}
 
 u8 center_ch_5g_40m[CENTER_CH_5G_40M_NUM] = {
+22, 30,
 /* G00 */38,
 /* G01 */46,
 /* G02 */54,
 /* G03 */62,
+70, 78, 86, 94,
 /* G04 */102,
 /* G05 */110,
 /* G06 */118,
@@ -117,9 +140,12 @@ u8 center_ch_5g_40m[CENTER_CH_5G_40M_NUM] = {
 /* G10 */151,
 /* G11 */159,
 /* G12 */167,
-/* G13 */175
+/* G13 */175,
+183, 191, 199, 207,
+215, 223, 239, 247
 };
 
+#if 0
 u8 center_ch_5g_20m_40m[CENTER_CH_5G_20M_NUM + CENTER_CH_5G_40M_NUM] = {
 /* G00 */36, 38, 40,
 /* G01 */44, 46, 48,
@@ -136,42 +162,69 @@ u8 center_ch_5g_20m_40m[CENTER_CH_5G_20M_NUM + CENTER_CH_5G_40M_NUM] = {
 /* G12 */165, 167, 169,
 /* G13 */173, 175, 177
 };
+#endif
 
 u8 op_chs_of_cch_5g_40m[CENTER_CH_5G_40M_NUM][2] = {
-	{36, 40}, /* 38 */
-	{44, 48}, /* 46 */
-	{52, 56}, /* 54 */
-	{60, 64}, /* 62 */
-	{100, 104}, /* 102 */
-	{108, 112}, /* 110 */
-	{116, 120}, /* 118 */
-	{124, 128}, /* 126 */
-	{132, 136}, /* 134 */
-	{140, 144}, /* 142 */
-	{149, 153}, /* 151 */
-	{157, 161}, /* 159 */
-	{165, 169}, /* 167 */
-	{173, 177}, /* 175 */
+{20, 24}, /* 22 */
+{28, 32}, /* 30 */
+
+{36, 40}, /* 38 */
+{44, 48}, /* 46 */
+{52, 56}, /* 54 */
+{60, 64}, /* 62 */
+
+{68, 72}, /* 70 */
+{76, 80}, /* 78 */
+{84, 88}, /* 86 */
+{92, 96}, /* 94 */
+
+{100, 104}, /* 102 */
+{108, 112}, /* 110 */
+{116, 120}, /* 118 */
+{124, 128}, /* 126 */
+{132, 136}, /* 134 */
+{140, 144}, /* 142 */
+{149, 153}, /* 151 */
+{157, 161}, /* 159 */
+{165, 169}, /* 167 */
+{173, 177}, /* 175 */
+
+{181, 185}, /* 183 */
+{189, 193}, /* 191 */
+{197, 201}, /* 199 */
+{205, 209}, /* 207 */
+{213, 217}, /* 215 */
+{221, 225}, /* 223 */
+{237, 241}, /* 239 */
+{245, 249}, /* 247 */
 };
 
 u8 center_ch_5g_80m[CENTER_CH_5G_80M_NUM] = {
+26,
 /* G00 ~ G01*/42,
 /* G02 ~ G03*/58,
+74, 90,
 /* G04 ~ G05*/106,
 /* G06 ~ G07*/122,
 /* G08 ~ G09*/138,
 /* G10 ~ G11*/155,
-/* G12 ~ G13*/171
+/* G12 ~ G13*/171, 187, 203, 219
 };
 
 u8 op_chs_of_cch_5g_80m[CENTER_CH_5G_80M_NUM][4] = {
-	{36, 40, 44, 48}, /* 42 */
-	{52, 56, 60, 64}, /* 58 */
-	{100, 104, 108, 112}, /* 106 */
-	{116, 120, 124, 128}, /* 122 */
-	{132, 136, 140, 144}, /* 138 */
-	{149, 153, 157, 161}, /* 155 */
-	{165, 169, 173, 177}, /* 171 */
+{20, 24, 28, 32}, /* 26 */
+{36, 40, 44, 48}, /* 42 */
+{52, 56, 60, 64}, /* 58 */
+{68, 72, 76, 80}, /* 74 */
+{84, 88, 92, 96}, /* 90 */
+{100, 104, 108, 112}, /* 106 */
+{116, 120, 124, 128}, /* 122 */
+{132, 136, 140, 144}, /* 138 */
+{149, 153, 157, 161}, /* 155 */
+{165, 169, 173, 177}, /* 171 */
+{181, 185, 189, 193}, /* 187 */
+{197, 201, 205, 209}, /* 203 */
+{213, 217, 221, 225}, /* 219 */
 };
 
 u8 center_ch_5g_160m[CENTER_CH_5G_160M_NUM] = {
@@ -227,31 +280,31 @@ u8 rtw_get_scch_by_cch_offset(u8 cch, u8 bw, u8 offset)
 
 	/* 2.4G, 40MHz */
 	//if (cch >= 3 && cch <= 11 && bw == CHANNEL_WIDTH_40) {
-    if (cch >= 3 && cch <= 14 && bw == CHANNEL_WIDTH_40) { // OpenHD fix:
+	if (cch >= 3 && cch <= 14 && bw == CHANNEL_WIDTH_40) { // OpenHD fix:
 		t_cch = (offset == HAL_PRIME_CHNL_OFFSET_UPPER) ? cch + 2 : cch - 2;
 		goto exit;
 	}
 
-	/* 5G, 160MHz */
-	if (cch >= 50 && cch <= 163 && bw == CHANNEL_WIDTH_160) {
-		t_cch = (offset == HAL_PRIME_CHNL_OFFSET_UPPER) ? cch + 8 : cch - 8;
-		goto exit;
+        /* 5G, 160MHz */
+        if (cch >= 50 && cch <= 163 && bw == CHANNEL_WIDTH_160) {
+                t_cch = (offset == HAL_PRIME_CHNL_OFFSET_UPPER) ? cch + 8 : cch - 8;
+                goto exit;
 
-	/* 5G, 80MHz */
-	} else if (cch >= 42 && cch <= 171 && bw == CHANNEL_WIDTH_80) {
-		t_cch = (offset == HAL_PRIME_CHNL_OFFSET_UPPER) ? cch + 4 : cch - 4;
-		goto exit;
+        /* 5G, 80MHz */
+        } else if (cch >= 26 && cch <= 219 && bw == CHANNEL_WIDTH_80) {
+                t_cch = (offset == HAL_PRIME_CHNL_OFFSET_UPPER) ? cch + 4 : cch - 4;
+                goto exit;
 
-	/* 5G, 40MHz */
-	//} else if (cch >= 38 && cch <= 175 && bw == CHANNEL_WIDTH_40) {
-    } else if (cch >= 32 && cch <= 177 && bw == CHANNEL_WIDTH_40) { //OpenHD fix:
-		t_cch = (offset == HAL_PRIME_CHNL_OFFSET_UPPER) ? cch + 2 : cch - 2;
-		goto exit;
+        /* 5G, 40MHz */
+        //} else if (cch >= 38 && cch <= 175 && bw == CHANNEL_WIDTH_40) {
+        } else if (cch >= 22 && cch <= 247 && bw == CHANNEL_WIDTH_40) { //OpenHD fix:
+                t_cch = (offset == HAL_PRIME_CHNL_OFFSET_UPPER) ? cch + 2 : cch - 2;
+                goto exit;
 
-	} else {
-		rtw_warn_on(1);
-		goto exit;
-	}
+        } else {
+                rtw_warn_on(1);
+                goto exit;
+        }
 
 exit:
 	return t_cch;
@@ -353,7 +406,7 @@ u8 rtw_get_op_chs_by_cch_bw(u8 cch, u8 bw, u8 **op_chs, u8 *op_ch_num)
 	) {
 		c_chs_ent = &center_chs_2g_by_bw[bw];
 		op_chs_ent = &op_chs_of_cch_2g_by_bw[bw];
-	} else if (cch >= 36 && cch <= 177
+	} else if (cch >= 16 && cch <= 251
 		&& bw <= CHANNEL_WIDTH_160
 	) {
 		c_chs_ent = &center_chs_5g_by_bw[bw];
@@ -378,11 +431,11 @@ u8 rtw_get_op_chs_by_cch_bw(u8 cch, u8 bw, u8 **op_chs, u8 *op_ch_num)
 exit:
 	return valid;
 }
-
 u8 rtw_get_offset_by_chbw(u8 ch, u8 bw, u8 *r_offset)
 {
 	u8 valid = 1;
 	u8 offset = HAL_PRIME_CHNL_OFFSET_DONT_CARE;
+	int i;
 
 	if (bw == CHANNEL_WIDTH_20)
 		goto exit;
@@ -404,43 +457,20 @@ u8 rtw_get_offset_by_chbw(u8 ch, u8 bw, u8 *r_offset)
 	else if (ch == 14) {
 		valid = 0; /* ch14 doesn't support 40MHz bandwidth */
 		goto exit;
-	} else if (ch >= 36 && ch <= 177) {
-		switch (ch) {
-		case 36:
-		case 44:
-		case 52:
-		case 60:
-		case 100:
-		case 108:
-		case 116:
-		case 124:
-		case 132:
-		case 140:
-		case 149:
-		case 157:
-		case 165:
-		case 173:
-			offset = HAL_PRIME_CHNL_OFFSET_LOWER;
-			break;
-		case 40:
-		case 48:
-		case 56:
-		case 64:
-		case 104:
-		case 112:
-		case 120:
-		case 128:
-		case 136:
-		case 144:
-		case 153:
-		case 161:
-		case 169:
-		case 177:
-			offset = HAL_PRIME_CHNL_OFFSET_UPPER;
-			break;
-		default:
+	} else if (ch >= 16 && ch <= 249) {
+		for (i = 0; i < CENTER_CH_5G_40M_NUM; i++) {
+			if (ch == op_chs_of_cch_5g_40m[i][0]) {
+				offset = HAL_PRIME_CHNL_OFFSET_LOWER;
+				break;
+			} else if (ch == op_chs_of_cch_5g_40m[i][1]) {
+				offset = HAL_PRIME_CHNL_OFFSET_UPPER;
+				break;
+			}
+		}
+
+		if (i == CENTER_CH_5G_40M_NUM) {
 			valid = 0;
-			break;
+			goto exit;
 		}
 	} else
 		valid = 0;
@@ -450,10 +480,10 @@ exit:
 		*r_offset = offset;
 	return valid;
 }
-
 u8 rtw_get_center_ch(u8 ch, u8 bw, u8 offset)
 {
 	u8 cch = ch;
+	int i, j;
 
 	if (bw == CHANNEL_WIDTH_160) {
 		if (ch % 4 == 0) {
@@ -467,24 +497,17 @@ u8 rtw_get_center_ch(u8 ch, u8 bw, u8 offset)
 		}
 
 	} else if (bw == CHANNEL_WIDTH_80) {
-		if (ch <= 14)
+		if (ch <= 14) {
 			cch = 7; /* special case for 2.4G */
-		else if (ch % 4 == 0) {
-			if (ch >= 36 && ch <= 48)
-				cch = 42;
-			else if (ch >= 52 && ch <= 64)
-				cch = 58;
-			else if (ch >= 100 && ch <= 112)
-				cch = 106;
-			else if (ch >= 116 && ch <= 128)
-				cch = 122;
-			else if (ch >= 132 && ch <= 144)
-				cch = 138;
-		} else if (ch % 4 == 1) {
-			if (ch >= 149 && ch <= 161)
-				cch = 155;
-			else if (ch >= 165 && ch <= 177)
-				cch = 171;
+		} else {
+			for (i = 0; i < CENTER_CH_5G_80M_NUM; i++) {
+				for (j = 0; j < 4; j++) {
+					if (ch == op_chs_of_cch_5g_80m[i][j]) {
+						cch = center_ch_5g_80m[i];
+						goto exit;
+					}
+				}
+			}
 		}
 
 	} else if (bw == CHANNEL_WIDTH_40) {
@@ -501,15 +524,15 @@ u8 rtw_get_center_ch(u8 ch, u8 bw, u8 offset)
 	else
 		rtw_warn_on(1);
 
+exit:
 	return cch;
 }
-
 u8 rtw_get_ch_group(u8 ch, u8 *group, u8 *cck_group)
 {
 	BAND_TYPE band = BAND_MAX;
 	s8 gp = -1, cck_gp = -1;
 
-	if (ch <= 14) {
+        if (ch <= 14) {
 		band = BAND_ON_2_4G;
 
 		if (1 <= ch && ch <= 2)
@@ -529,21 +552,21 @@ u8 rtw_get_ch_group(u8 ch, u8 *group, u8 *cck_group)
 			cck_gp = 5;
 		else
 			cck_gp = gp;
-	} else {
-		band = BAND_ON_5G;
+        } else {
+                band = BAND_ON_5G;
 
-		if (36 <= ch && ch <= 42)
-			gp = 0;
-		else if (44   <= ch && ch <=  48)
-			gp = 1;
-		else if (50   <= ch && ch <=  58)
-			gp = 2;
-		else if (60   <= ch && ch <=  64)
-			gp = 3;
-		else if (100  <= ch && ch <= 106)
-			gp = 4;
-		else if (108  <= ch && ch <= 114)
-			gp = 5;
+                if (15 <= ch && ch <= 42)
+                        gp = 0;
+                else if (44   <= ch && ch <=  48)
+                        gp = 1;
+                else if (50   <= ch && ch <=  58)
+                        gp = 2;
+                else if (60   <= ch && ch <=  80)
+                        gp = 3;
+                else if (82  <= ch && ch <= 106)
+                        gp = 4;
+                else if (108  <= ch && ch <= 114)
+                        gp = 5;
 		else if (116  <= ch && ch <= 122)
 			gp = 6;
 		else if (124  <= ch && ch <= 130)
@@ -597,8 +620,8 @@ int rtw_ch2freq(int chan)
 			return 2484;
 		else if (chan < 14)
 			return 2407 + chan * 5;
-	} else if (chan >= 36 && chan <= 177)
-		return 5000 + chan * 5;
+        } else if (chan >= 15 && chan <= 177)
+                return 5000 + chan * 5;
 
 	return 0; /* not supported */
 }
