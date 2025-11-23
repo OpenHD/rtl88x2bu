@@ -307,15 +307,15 @@ void rtw_rf_apply_tx_gain_offset(_adapter *adapter, u8 ch);
 
 /* only check channel ranges */
 #define rtw_is_2g_ch(ch) (ch >= 1 && ch <= 14)
-#define rtw_is_5g_ch(ch) ((ch) >= 15 && (ch) <= 177)
+#define rtw_is_5g_ch(ch) ((ch) >= 15 && (ch) <= 253)
 #define rtw_is_same_band(a, b) \
 	((rtw_is_2g_ch(a) && rtw_is_2g_ch(b)) \
 	|| (rtw_is_5g_ch(a) && rtw_is_5g_ch(b)))
 
-#define rtw_is_5g_band1(ch) ((ch) >= 36 && (ch) <= 48)
+#define rtw_is_5g_band1(ch) ((ch) >= 15 && (ch) <= 48)
 #define rtw_is_5g_band2(ch) ((ch) >= 52 && (ch) <= 64)
 #define rtw_is_5g_band3(ch) ((ch) >= 100 && (ch) <= 144)
-#define rtw_is_5g_band4(ch) ((ch) >= 149 && (ch) <= 177)
+#define rtw_is_5g_band4(ch) ((ch) >= 149 && (ch) <= 253)
 #define rtw_is_same_5g_band(a, b) \
 	((rtw_is_5g_band1(a) && rtw_is_5g_band1(b)) \
 	|| (rtw_is_5g_band2(a) && rtw_is_5g_band2(b)) \
