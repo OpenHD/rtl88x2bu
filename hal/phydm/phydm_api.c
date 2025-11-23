@@ -1265,7 +1265,7 @@ enum odm_rf_band phydm_ch_to_rf_band(void *dm_void, u8 central_ch)
 
 	if (central_ch <= 14)
 		rf_band = ODM_RF_BAND_2G;
-	else if (central_ch >= 36 && central_ch <= 64)
+	else if (central_ch >= 15 && central_ch <= 64)
 		rf_band = ODM_RF_BAND_5G_LOW;
 	else if ((central_ch >= 100) && (central_ch <= 144))
 		rf_band = ODM_RF_BAND_5G_MID;
