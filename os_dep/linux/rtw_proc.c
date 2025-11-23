@@ -1654,11 +1654,22 @@ exit:
 	return count;
 }
 
+static int cap_spt_op_class_ch_detail = 0;
+
+static int proc_get_cap_spt_op_class_ch(struct seq_file *m, void *v)
+{
+        struct net_device *dev = m->private;
+        _adapter *adapter = (_adapter *)rtw_netdev_priv(dev);
+
+        dump_cap_spt_op_class_ch(m , adapter_to_rfctl(adapter), cap_spt_op_class_ch_detail);
+        return 0;
+}
+
 static ssize_t proc_set_cap_spt_op_class_ch(struct file *file, const char __user *buffer, size_t count, loff_t *pos, void *data)
 {
-	struct net_device *dev = data;
-	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
-	char tmp[32];
+        struct net_device *dev = data;
+        _adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
+        char tmp[32];
 	int num;
 
 	if (count < 1)
