@@ -543,7 +543,7 @@ void phydm_pmac_tx_dbg(void *dm_void, char input[][16], u32 *_used,
 		}
 
 		phydm_reset_bb_hw_cnt(dm);
-		phydm_set_pmac_tx_jgr3(dm, &tx_info, RF_PATH_A);
+		phydm_set_pmac_tx(dm, &tx_info, RF_PATH_A);
 
 		PDM_SNPF(out_len, used, output + used, out_len - used,
 			 "pmac_tx enabled, please wait for tx_cnt = %d\n",
