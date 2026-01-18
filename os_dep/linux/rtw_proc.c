@@ -6852,10 +6852,3 @@ void rtw_adapter_proc_replace(struct net_device *dev)
 }
 
 #endif /* CONFIG_PROC_DEBUG */
-
-	}
-
-	RTW_INFO("Write to single_tone: en %d, path %d\n", en, rf_path);
-
-	return count;
-}
