@@ -327,6 +327,11 @@ struct mlme_ext_info {
 	u8	hidden_ssid_mode;
 	u8	VHT_enable;
 
+	u8	slottime_override_en;
+	u8	slottime_override;
+	u8	sifs_override_en;
+	u8	sifs_override;
+
 	u8 ip_addr[RTW_IP_ADDR_LEN];
 	u8 ip6_addr[RTW_IPv6_ADDR_LEN];
 
