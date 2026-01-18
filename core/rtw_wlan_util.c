@@ -1491,6 +1491,7 @@ void WMMOnAssocRsp(_adapter *padapter)
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	struct xmit_priv		*pxmitpriv = &padapter->xmitpriv;
 	struct registry_priv	*pregpriv = &padapter->registrypriv;
+	u8 slottime;
 #ifdef CONFIG_WMMPS_STA
 	struct mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 	struct qos_priv	*pqospriv = &pmlmepriv->qospriv;
@@ -1504,10 +1505,22 @@ void WMMOnAssocRsp(_adapter *padapter)
 	else
 		aSifsTime = 10;
 
+	if (pmlmeinfo->sifs_override_en == 1) {
+		aSifsTime = pmlmeinfo->sifs_override;
+		RTW_INFO("WMMOnAssocRsp: sifs_override enabled, %d\n", aSifsTime);
+	}
+
 	if (pmlmeinfo->WMM_enable == 0) {
 		padapter->mlmepriv.acm_mask = 0;
 
-		AIFS = aSifsTime + (2 * pmlmeinfo->slotTime);
+		if (pmlmeinfo->slottime_override_en == 1) {
+			slottime = pmlmeinfo->slottime_override;
+			RTW_INFO("WMMOnAssocRsp: slottime_override enabled, %d\n", slottime);
+		} else {
+			slottime = pmlmeinfo->slotTime;
+		}
+
+		AIFS = aSifsTime + (2 * slottime);
 
 		if (pmlmeext->cur_wireless_mode & (WIRELESS_11G | WIRELESS_11A)) {
 			ECWMin = 4;
@@ -1539,7 +1552,12 @@ void WMMOnAssocRsp(_adapter *padapter)
 			ACM = (pmlmeinfo->WMM_param.ac_param[i].ACI_AIFSN >> 4) & 0x01;
 
 			/* AIFS = AIFSN * slot time + SIFS - r2t phy delay */
-			AIFS = (pmlmeinfo->WMM_param.ac_param[i].ACI_AIFSN & 0x0f) * pmlmeinfo->slotTime + aSifsTime;
+			if (pmlmeinfo->slottime_override_en == 1)
+				slottime = pmlmeinfo->slottime_override;
+			else
+				slottime = pmlmeinfo->slotTime;
+
+			AIFS = (pmlmeinfo->WMM_param.ac_param[i].ACI_AIFSN & 0x0f) * slottime + aSifsTime;
 
 			ECWMin = (pmlmeinfo->WMM_param.ac_param[i].CW & 0x0f);
 			ECWMax = (pmlmeinfo->WMM_param.ac_param[i].CW & 0xf0) >> 4;
@@ -3437,7 +3455,12 @@ void update_capinfo(PADAPTER Adapter, u16 updateCap)
 		}
 	}
 
-	rtw_hal_set_hwreg(Adapter, HW_VAR_SLOT_TIME, &pmlmeinfo->slotTime);
+	if (pmlmeinfo->slottime_override_en == 1) {
+		rtw_hal_set_hwreg(Adapter, HW_VAR_SLOT_TIME, (u8*)&pmlmeinfo->slottime_override);
+		RTW_INFO("update_capinfo: slottime_override enabled, %d\n", pmlmeinfo->slottime_override);
+	} else {
+		rtw_hal_set_hwreg(Adapter, HW_VAR_SLOT_TIME, &pmlmeinfo->slotTime);
+	}
 
 }
 
