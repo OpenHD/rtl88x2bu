@@ -1283,6 +1283,7 @@ static void rtw_set_hw_wmm_param(_adapter *padapter)
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	struct xmit_priv		*pxmitpriv = &padapter->xmitpriv;
 	struct registry_priv	*pregpriv = &padapter->registrypriv;
+	u8 slottime;
 
 	acm_mask = 0;
 #ifdef CONFIG_80211N_HT
@@ -1294,10 +1295,20 @@ static void rtw_set_hw_wmm_param(_adapter *padapter)
 #endif /* CONFIG_80211N_HT */
 		aSifsTime = 10;
 
+	if (pmlmeinfo->sifs_override_en == 1) {
+		aSifsTime = pmlmeinfo->sifs_override;
+		RTW_INFO("rtw_set_hw_wmm_param: sifs_override enabled, %d\n", aSifsTime);
+	}
+
 	if (pmlmeinfo->WMM_enable == 0) {
 		padapter->mlmepriv.acm_mask = 0;
 
-		AIFS = aSifsTime + (2 * pmlmeinfo->slotTime);
+		if (pmlmeinfo->slottime_override_en == 1)
+			slottime = pmlmeinfo->slottime_override;
+		else
+			slottime = pmlmeinfo->slotTime;
+
+		AIFS = aSifsTime + (2 * slottime);
 
 		if (pmlmeext->cur_wireless_mode & (WIRELESS_11G | WIRELESS_11A)) {
 			ECWMin = 4;
@@ -1333,7 +1344,12 @@ static void rtw_set_hw_wmm_param(_adapter *padapter)
 		/* BK */
 		/* AIFS = AIFSN * slot time + SIFS - r2t phy delay */
 #endif
-		AIFS = (7 * pmlmeinfo->slotTime) + aSifsTime;
+		if (pmlmeinfo->slottime_override_en == 1)
+			slottime = pmlmeinfo->slottime_override;
+		else
+			slottime = pmlmeinfo->slotTime;
+
+		AIFS = (7 * slottime) + aSifsTime;
 		ECWMin = 4;
 		ECWMax = 10;
 		TXOP = 0;
@@ -1343,7 +1359,12 @@ static void rtw_set_hw_wmm_param(_adapter *padapter)
 		RTW_INFO("WMM(BK): %x\n", acParm);
 
 		/* BE */
-		AIFS = (3 * pmlmeinfo->slotTime) + aSifsTime;
+		if (pmlmeinfo->slottime_override_en == 1)
+			slottime = pmlmeinfo->slottime_override;
+		else
+			slottime = pmlmeinfo->slotTime;
+
+		AIFS = (3 * slottime) + aSifsTime;
 		ECWMin = 4;
 		ECWMax = 6;
 		TXOP = 0;
@@ -1353,7 +1374,12 @@ static void rtw_set_hw_wmm_param(_adapter *padapter)
 		RTW_INFO("WMM(BE): %x\n", acParm);
 
 		/* VI */
-		AIFS = (1 * pmlmeinfo->slotTime) + aSifsTime;
+		if (pmlmeinfo->slottime_override_en == 1)
+			slottime = pmlmeinfo->slottime_override;
+		else
+			slottime = pmlmeinfo->slotTime;
+
+		AIFS = (1 * slottime) + aSifsTime;
 		ECWMin = 3;
 		ECWMax = 4;
 		TXOP = 94;
@@ -1363,7 +1389,12 @@ static void rtw_set_hw_wmm_param(_adapter *padapter)
 		RTW_INFO("WMM(VI): %x\n", acParm);
 
 		/* VO */
-		AIFS = (1 * pmlmeinfo->slotTime) + aSifsTime;
+		if (pmlmeinfo->slottime_override_en == 1)
+			slottime = pmlmeinfo->slottime_override;
+		else
+			slottime = pmlmeinfo->slotTime;
+
+		AIFS = (1 * slottime) + aSifsTime;
 		ECWMin = 2;
 		ECWMax = 3;
 		TXOP = 47;

@@ -537,9 +537,14 @@ void phydm_edcca_thre_calc(void *dm_void)
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 	struct phydm_dig_struct *dig_t = &dm->dm_dig_table;
 	struct phydm_adaptivity_struct *adapt = &dm->adaptivity;
+	void *adapter = dm->adapter;
+	struct registry_priv *pregpriv = &((_adapter *)adapter)->registrypriv;
 	u8 igi = dig_t->cur_ig_value;
 	s8 th_l2h = 0, th_h2l = 0;
 	s8 diff = 0, igi_target = adapt->igi_base;
+	u8 edcca_override_en = 0;
+
+	edcca_override_en = pregpriv->edcca_thresh_override_en;
 
 	if (dm->support_ic_type & ODM_IC_PWDB_EDCCA) {
 		/*@fix EDCCA hang issue*/
@@ -550,7 +555,10 @@ void phydm_edcca_thre_calc(void *dm_void)
 			odm_set_bb_reg(dm, R_0x800, BIT(10), 0);
 		}
 
-		if (*dm->edcca_mode == PHYDM_EDCCA_ADAPT_MODE) {
+		if (edcca_override_en) {
+			th_l2h = pregpriv->edcca_thresh_l2h_override;
+			th_h2l = th_l2h - 8;
+		} else if (*dm->edcca_mode == PHYDM_EDCCA_ADAPT_MODE) {
 			/*@Limit IGI upper bound for adaptivity*/
 			phydm_dig_up_bound_lmt_en(dm);
 			diff = igi_target - (s8)igi;
