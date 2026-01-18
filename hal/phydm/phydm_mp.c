@@ -363,8 +363,11 @@ void phydm_mp_set_single_tone(void *dm_void, boolean is_single_tone, u8 path)
 {
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 
-	if (dm->support_ic_type & ODM_IC_JGR3_SERIES)
+	if (dm->support_ic_type & ODM_IC_JGR3_SERIES) {
+		#ifdef PHYDM_IC_JGR3_SERIES_SUPPORT
 		phydm_mp_set_single_tone_jgr3(dm, is_single_tone, path);
+		#endif
+	}
 }
 
 void phydm_mp_set_carrier_supp(void *dm_void, boolean is_carrier_supp,
@@ -372,16 +375,22 @@ void phydm_mp_set_carrier_supp(void *dm_void, boolean is_carrier_supp,
 {
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 
-	if (dm->support_ic_type & ODM_IC_JGR3_SERIES)
+	if (dm->support_ic_type & ODM_IC_JGR3_SERIES) {
+		#ifdef PHYDM_IC_JGR3_SERIES_SUPPORT
 		phydm_mp_set_carrier_supp_jgr3(dm, is_carrier_supp, rate_index);
+		#endif
+	}
 }
 
 void phydm_mp_set_single_carrier(void *dm_void, boolean is_single_carrier)
 {
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 
-	if (dm->support_ic_type & ODM_IC_JGR3_SERIES)
+	if (dm->support_ic_type & ODM_IC_JGR3_SERIES) {
+		#ifdef PHYDM_IC_JGR3_SERIES_SUPPORT
 		phydm_mp_set_single_carrier_jgr3(dm, is_single_carrier);
+		#endif
+	}
 }
 void phydm_mp_reset_rx_counters_phy(void *dm_void)
 {
@@ -394,15 +403,21 @@ void phydm_mp_get_tx_ok(void *dm_void, u32 rate_index)
 {
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 
-	if (dm->support_ic_type & ODM_IC_JGR3_SERIES)
+	if (dm->support_ic_type & ODM_IC_JGR3_SERIES) {
+		#ifdef PHYDM_IC_JGR3_SERIES_SUPPORT
 		phydm_mp_get_tx_ok_jgr3(dm, rate_index);
+		#endif
+	}
 }
 
 void phydm_mp_get_rx_ok(void *dm_void)
 {
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 
-	if (dm->support_ic_type & ODM_IC_JGR3_SERIES)
+	if (dm->support_ic_type & ODM_IC_JGR3_SERIES) {
+		#ifdef PHYDM_IC_JGR3_SERIES_SUPPORT
 		phydm_mp_get_rx_ok_jgr3(dm);
+		#endif
+	}
 }
 #endif
