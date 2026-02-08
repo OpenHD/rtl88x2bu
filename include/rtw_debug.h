@@ -407,6 +407,10 @@ int proc_get_huawei_trx_info(struct seq_file *m, void *v);
 #endif
 
 int proc_get_rx_signal(struct seq_file *m, void *v);
+int proc_get_rssi_a(struct seq_file *m, void *v);
+int proc_get_rssi_b(struct seq_file *m, void *v);
+int proc_get_snr_a(struct seq_file *m, void *v);
+int proc_get_snr_b(struct seq_file *m, void *v);
 ssize_t proc_set_rx_signal(struct file *file, const char __user *buffer, size_t count, loff_t *pos, void *data);
 int proc_get_hw_status(struct seq_file *m, void *v);
 ssize_t proc_set_hw_status(struct file *file, const char __user *buffer, size_t count, loff_t *pos, void *data);
