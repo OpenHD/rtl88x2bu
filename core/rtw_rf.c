@@ -112,18 +112,6 @@ u8 center_ch_5g_20m[CENTER_CH_5G_20M_NUM] = {
 241, 245, 249, 251
 };
 
-static u8 ch_to_cch_5g_20m_idx(u8 ch)
-{
-        int i;
-
-        for (i = 0; i < CENTER_CH_5G_20M_NUM; i++) {
-                if (center_ch_5g_20m[i] == ch)
-                        return i;
-        }
-
-        return 255;
-}
-
 u8 center_ch_5g_40m[CENTER_CH_5G_40M_NUM] = {
 22, 30,
 /* G00 */38,
