@@ -271,6 +271,8 @@ jobs:
           sudo touch "${MNT_DIR}/etc/resolv.conf"
           sudo mount --bind /etc/resolv.conf "${MNT_DIR}/etc/resolv.conf"
 
+          export TARGET OS DISTRO DRIVER_PACKAGE MODULE_NAME USER_MODULE_NAME_VALUE
+          export GITHUB_SHA GITHUB_RUN_NUMBER GITHUB_REPOSITORY
           sudo --preserve-env=TARGET,OS,DISTRO,DRIVER_PACKAGE,MODULE_NAME,USER_MODULE_NAME_VALUE,GITHUB_SHA,GITHUB_RUN_NUMBER,GITHUB_REPOSITORY \
             chroot "${MNT_DIR}" /usr/bin/qemu-aarch64-static /bin/bash /opt/openhd-driver-build/build.sh
 
