@@ -6,7 +6,7 @@ on:
       targets:
         description: Comma-separated OpenHD-ImageBuilder targets
         required: false
-        default: radxa-rock3a_base,rock5a_base,rock5b_base,radxa-cm3,radxa-zero3w_base,core3566
+        default: rock5a,rock5b,radxa-cm3,radxa-zero3w,core3566
   push:
     paths:
       - ".github/workflows/build-rockchip-driver-debs.yml"
@@ -25,7 +25,7 @@ jobs:
       - id: targets
         shell: bash
         run: |
-          targets="${{ github.event.inputs.targets || 'radxa-rock3a_base,rock5a_base,rock5b_base,radxa-cm3,radxa-zero3w_base,core3566' }}"
+          targets="${{ github.event.inputs.targets || 'rock5a,rock5b,radxa-cm3,radxa-zero3w,core3566' }}"
           json="$(printf '%s' "$targets" | jq -Rc 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')"
           echo "targets=${json}" >> "$GITHUB_OUTPUT"
 
@@ -98,9 +98,16 @@ jobs:
             ca-certificates curl xz-utils parted e2fsprogs util-linux rsync \
             qemu-user-static binfmt-support file
 
+          REQUESTED_TARGET="${TARGET}"
           CONFIG="imagebuilder/images/${TARGET}"
+          if [[ ! -f "${CONFIG}" && "${TARGET}" == *_base ]]; then
+            TARGET="${TARGET%_base}"
+            CONFIG="imagebuilder/images/${TARGET}"
+          fi
           if [[ ! -f "${CONFIG}" ]]; then
-            echo "No OpenHD-ImageBuilder config for target ${TARGET}" >&2
+            echo "No OpenHD-ImageBuilder config for target ${REQUESTED_TARGET}" >&2
+            echo "Available targets:" >&2
+            ls -1 imagebuilder/images >&2
             exit 1
           fi
 
