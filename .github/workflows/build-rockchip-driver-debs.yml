@@ -171,7 +171,7 @@ jobs:
           fi
 
           sudo mkdir -p "${MNT_DIR}/opt/openhd-driver-build/src" "${MNT_DIR}/opt/openhd-driver-build/out"
-          sudo rsync -a --delete --exclude='.git' --exclude='.github' --exclude='*.o' --exclude='*.ko' \
+          sudo rsync -a --delete --exclude='.github' --exclude='*.o' --exclude='*.ko' \
             --exclude='*.mod' --exclude='*.mod.c' --exclude='Module.symvers' --exclude='modules.order' \
             driver/ "${MNT_DIR}/opt/openhd-driver-build/src/"
           sudo cp /usr/bin/qemu-aarch64-static "${MNT_DIR}/usr/bin/" || true
@@ -261,7 +261,7 @@ jobs:
           for kver in "${kernels[@]}"; do
             ensure_headers "${kver}"
             make -C "${SRC_DIR}" clean || true
-            make_args=(-C "${SRC_DIR}" -j"$(nproc)" ARCH=arm64 KVER="${kver}" KSRC="/lib/modules/${kver}/build")
+            make_args=(-C "${SRC_DIR}" -j"$(nproc)" ARCH=arm64 KVER="${kver}" KSRC="/lib/modules/${kver}/build" KCFLAGS="-Wno-error=implicit-fallthrough")
             [[ -n "${USER_MODULE_NAME_VALUE}" ]] && make_args+=(USER_MODULE_NAME="${USER_MODULE_NAME_VALUE}")
             make "${make_args[@]}" modules
             ko="${SRC_DIR}/${MODULE_NAME}.ko"
