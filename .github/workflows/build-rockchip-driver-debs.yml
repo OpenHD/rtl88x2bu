@@ -261,7 +261,7 @@ jobs:
           for kver in "${kernels[@]}"; do
             ensure_headers "${kver}"
             make -C "${SRC_DIR}" clean || true
-            make_args=(-C "${SRC_DIR}" -j"$(nproc)" ARCH=arm64 KVER="${kver}" KSRC="/lib/modules/${kver}/build" KCFLAGS="-Wno-error=implicit-fallthrough")
+            make_args=(-C "${SRC_DIR}" -j"$(nproc)" ARCH=arm64 KVER="${kver}" KSRC="/lib/modules/${kver}/build" KCFLAGS="-Wno-error=implicit-fallthrough -Wno-error=stringop-overread")
             [[ -n "${USER_MODULE_NAME_VALUE}" ]] && make_args+=(USER_MODULE_NAME="${USER_MODULE_NAME_VALUE}")
             make "${make_args[@]}" modules
             ko="${SRC_DIR}/${MODULE_NAME}.ko"
