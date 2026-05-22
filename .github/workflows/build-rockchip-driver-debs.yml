@@ -6,7 +6,7 @@ on:
       targets:
         description: Comma-separated OpenHD-ImageBuilder targets
         required: false
-        default: rock5a,rock5b,radxa-cm3,radxa-zero3w,core3566
+        default: radxa-rock3a_base,rock5a_base,rock5b_base,radxa-cm3,radxa-zero3w_base,core3566
   push:
     paths:
       - ".github/workflows/build-rockchip-driver-debs.yml"
@@ -25,7 +25,7 @@ jobs:
       - id: targets
         shell: bash
         run: |
-          targets="${{ github.event.inputs.targets || 'rock5a,rock5b,radxa-cm3,radxa-zero3w,core3566' }}"
+          targets="${{ github.event.inputs.targets || 'radxa-rock3a_base,rock5a_base,rock5b_base,radxa-cm3,radxa-zero3w_base,core3566' }}"
           json="$(printf '%s' "$targets" | jq -Rc 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')"
           echo "targets=${json}" >> "$GITHUB_OUTPUT"
 
@@ -49,6 +49,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: OpenHD/OpenHD-ImageBuilder
+          ref: dev-release
           path: imagebuilder
 
       - name: Cache base image archive
