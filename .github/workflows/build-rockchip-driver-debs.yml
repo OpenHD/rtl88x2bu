@@ -6,7 +6,7 @@ on:
       targets:
         description: Comma-separated OpenHD-ImageBuilder targets
         required: false
-        default: radxa-rock3a_base,rock5a_base,rock5b_base,radxa-cm3,radxa-zero3w_base,radxa-zero3w-lite_base,core3566
+        default: radxa-rock3a_base,rock5a_base,rock5b_base
   push:
     paths:
       - ".github/workflows/build-rockchip-driver-debs.yml"
@@ -25,7 +25,7 @@ jobs:
       - id: targets
         shell: bash
         run: |
-          targets="${{ github.event.inputs.targets || 'radxa-rock3a_base,rock5a_base,rock5b_base,radxa-cm3,radxa-zero3w_base,radxa-zero3w-lite_base,core3566' }}"
+          targets="${{ github.event.inputs.targets || 'radxa-rock3a_base,rock5a_base,rock5b_base' }}"
           json="$(printf '%s' "$targets" | jq -Rc 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')"
           echo "targets=${json}" >> "$GITHUB_OUTPUT"
 
@@ -204,17 +204,26 @@ jobs:
               -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           }
 
+          disable_stale_apt_sources() {
+            find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -print0 \
+              | xargs -0 -r sed -i -E \
+                -e '/dl\.cloudsmith\.io\/public\/openhd\/release/s/^/# disabled by driver CI: /' \
+                -e '/bullseye-security/s/^[[:space:]]*deb/# disabled by driver CI: &/' \
+                -e '/bullseye-backports/s/^[[:space:]]*deb/# disabled by driver CI: &/'
+          }
+
           if [[ "${DISTRO}" == "bullseye" ]]; then
             sed -i -E \
               -e 's|https?://deb\.debian\.org/debian|http://archive.debian.org/debian|g' \
-              -e '/bullseye-backports/s/^[[:space:]]*deb/# &/' \
+              -e 's|https?://security\.debian\.org/debian-security|http://archive.debian.org/debian-security|g' \
               /etc/apt/sources.list 2>/dev/null || true
             find /etc/apt/sources.list.d -name '*.list' -print0 2>/dev/null \
               | xargs -0 -r sed -i -E \
                 -e 's|https?://deb\.debian\.org/debian|http://archive.debian.org/debian|g' \
-                -e '/bullseye-backports/s/^[[:space:]]*deb/# &/' || true
+                -e 's|https?://security\.debian\.org/debian-security|http://archive.debian.org/debian-security|g' || true
           fi
 
+          disable_stale_apt_sources
           apt_update_tolerant
           apt-get install -y --no-install-recommends build-essential make gcc bc bison flex kmod dkms ca-certificates
           curl -1sLf "https://dl.cloudsmith.io/public/openhd/dev-release/setup.deb.sh" | bash || true
