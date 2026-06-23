@@ -362,19 +362,40 @@ jobs:
             dpkg-deb --build "${pkg_dir}" "${OUT_DIR}/${package_name}_${VERSION}_arm64.deb"
           }
 
+          supported_warning_flags() {
+            local flags=()
+            local flag
+            for flag in \
+              -Wno-error=implicit-fallthrough \
+              -Wno-error=stringop-overread \
+              -Wno-error=misleading-indentation; do
+              if printf 'int main(void) { return 0; }\n' | gcc -Werror "${flag}" -x c -c - -o /tmp/openhd-cc-flag-test.o >/dev/null 2>&1; then
+                flags+=("${flag}")
+              fi
+            done
+            rm -f /tmp/openhd-cc-flag-test.o
+            printf '%s ' "${flags[@]}"
+          }
+
           mapfile -t kernels < <(find /lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
           [[ "${#kernels[@]}" -gt 0 ]]
+          built_count=0
+          warning_flags="$(supported_warning_flags)"
           for kver in "${kernels[@]}"; do
-            ensure_headers "${kver}"
+            if ! ensure_headers "${kver}"; then
+              echo "::warning::Skipping ${kver}; kernel headers are unavailable"
+              continue
+            fi
             make -C "${SRC_DIR}" clean || true
-            warning_flags="-Wno-error=implicit-fallthrough -Wno-error=stringop-overread -Wno-error=misleading-indentation"
             make_args=(-C "${SRC_DIR}" -j"$(nproc)" ARCH=arm64 KVER="${kver}" KSRC="/lib/modules/${kver}/build" KCFLAGS="${warning_flags}" USER_EXTRA_CFLAGS="${warning_flags}")
             [[ -n "${USER_MODULE_NAME_VALUE}" ]] && make_args+=(USER_MODULE_NAME="${USER_MODULE_NAME_VALUE}")
             make "${make_args[@]}" modules
             ko="${SRC_DIR}/${MODULE_NAME}.ko"
             [[ -f "${ko}" ]] || ko="$(find "${SRC_DIR}" -maxdepth 1 -name '*.ko' | head -n1)"
             package_driver "${kver}" "${ko}"
+            built_count=$((built_count + 1))
           done
+          [[ "${built_count}" -gt 0 ]] || { echo "No kernel modules were packaged; no usable kernel headers found" >&2; exit 1; }
           CHROOT_SCRIPT
 
           sudo chmod 0755 "${MNT_DIR}/opt/openhd-driver-build/build.sh"
