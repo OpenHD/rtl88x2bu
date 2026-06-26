@@ -1282,11 +1282,15 @@ void phydm_dfs_histogram_radar_distinguish(
 			dfs->pri_hold[(dfs->hist_idx + 2) % 3][i];
 	}
 	/*@For long radar type*/
-	for (j = 1; j < 4; j++) {
-		dfs->pw_long_hold_sum[i] = dfs->pw_long_hold_sum[i] +
-			dfs->pw_hold[(dfs->hist_long_idx + j) % 4][i];
-		dfs->pri_long_hold_sum[i] = dfs->pri_long_hold_sum[i] +
-			dfs->pri_hold[(dfs->hist_long_idx + j) % 4][i];
+	for (i = 0; i < 6; i++) {
+		dfs->pw_long_hold_sum[i] = 0;
+		dfs->pri_long_hold_sum[i] = 0;
+		for (j = 1; j < 4; j++) {
+			dfs->pw_long_hold_sum[i] = dfs->pw_long_hold_sum[i] +
+				dfs->pw_hold[(dfs->hist_long_idx + j) % 4][i];
+			dfs->pri_long_hold_sum[i] = dfs->pri_long_hold_sum[i] +
+				dfs->pri_hold[(dfs->hist_long_idx + j) % 4][i];
+		}
 	}
 
 	dfs->hist_idx++;
